@@ -1,0 +1,1052 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import {
+  Wifi,
+  Shield,
+  Zap,
+  Users,
+  Activity,
+  AlertTriangle,
+  Play,
+  Square,
+  RefreshCw,
+  Search,
+  Waves,
+  Eye,
+  Globe,
+} from "lucide-react"
+import AirstrikeAPI from "./services/api"
+import "./App.css"
+
+const App = () => {
+  // API client
+  const api = useRef(new AirstrikeAPI())
+
+  // State management
+  const [apiStatus, setApiStatus] = useState({ status: "unknown", attacks: 0 })
+  const [accessPoints, setAccessPoints] = useState([])
+  const [networkClients, setNetworkClients] = useState([])
+  const [mitmClients, setMitmClients] = useState([])
+  const [mitmTraffic, setMitmTraffic] = useState([])
+  const [logs, setLogs] = useState({ deauth: [], icmp: [], mitm: [] })
+  const [loading, setLoading] = useState({ scan: false, discover: false, mitmDiscover: false })
+  const [errors, setErrors] = useState({})
+
+  // Form states
+  const [scanConfig, setScanConfig] = useState({
+    interface: "wlan0",
+    duration: 15,
+    advanced: true,
+  })
+
+  const [deauthConfig, setDeauthConfig] = useState({
+    interface: "wlan0",
+    ssid: "",
+    bssid: "",
+    channel: 6,
+  })
+
+  const [icmpConfig, setIcmpConfig] = useState({
+    interface: "wlan0",
+    targetIP: "",
+    packetSize: 64,
+    delay: 0.001,
+  })
+
+  const [mitmConfig, setMitmConfig] = useState({
+    interface: "wlan0",
+    selectedTargets: [],
+  })
+
+  // Attack states
+  const [attackStates, setAttackStates] = useState({
+    deauth: { running: false, id: null },
+    icmp: { running: false, id: null },
+    mitm: { running: false, id: null },
+  })
+
+  // Polling intervals
+  const pollingIntervals = useRef({})
+
+  // ==================== EFFECTS ====================
+
+  useEffect(() => {
+    checkAPIHealth()
+
+    // Cleanup intervals on unmount
+    return () => {
+      Object.values(pollingIntervals.current).forEach((interval) => {
+        if (interval) clearInterval(interval)
+      })
+    }
+  }, [])
+
+  // ==================== UTILITY FUNCTIONS ====================
+
+  const addLog = (type, message) => {
+    const timestamp = new Date().toLocaleTimeString()
+    const logEntry = `[${timestamp}] ${message}`
+
+    setLogs((prev) => ({
+      ...prev,
+      [type]: [...prev[type], logEntry].slice(-50), // Keep last 50 messages
+    }))
+  }
+
+  const setError = (key, message) => {
+    setErrors((prev) => ({ ...prev, [key]: message }))
+    setTimeout(() => {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[key]
+        return newErrors
+      })
+    }, 5000)
+  }
+
+  const startPolling = (attackType, attackId, statusFunction, trafficFunction = null) => {
+    // Clear existing interval
+    if (pollingIntervals.current[attackType]) {
+      clearInterval(pollingIntervals.current[attackType])
+    }
+
+    // Start new polling
+    pollingIntervals.current[attackType] = setInterval(async () => {
+      try {
+        const statusResult = await statusFunction(attackId)
+        if (statusResult.success) {
+          const stats = statusResult.data.stats
+
+          // Update logs based on attack type
+          if (attackType === "deauth") {
+            addLog(
+              "deauth",
+              `📊 Packets: ${stats.packets_sent || 0} | Duration: ${stats.duration || 0}s | Clients: ${stats.clients_discovered || 0}`,
+            )
+          } else if (attackType === "icmp") {
+            addLog(
+              "icmp",
+              `📊 Packets: ${stats.packets_sent || 0} | PPS: ${stats.packets_per_second?.toFixed(1) || 0} | Duration: ${stats.duration || 0}s`,
+            )
+          } else if (attackType === "mitm") {
+            addLog(
+              "mitm",
+              `📊 Captured: ${stats.packets_captured || 0} | DNS: ${stats.dns_requests || 0} | HTTP: ${stats.http_requests || 0}`,
+            )
+
+            // Get traffic data for MITM
+            if (trafficFunction) {
+              const trafficResult = await trafficFunction(attackId)
+              if (trafficResult.success) {
+                setMitmTraffic(trafficResult.data.traffic || [])
+              }
+            }
+          }
+
+          // Check if attack is still running
+          if (!stats.running) {
+            clearInterval(pollingIntervals.current[attackType])
+            setAttackStates((prev) => ({
+              ...prev,
+              [attackType]: { running: false, id: null },
+            }))
+            addLog(attackType, "Attack stopped")
+          }
+        }
+      } catch (error) {
+        console.error(`Polling error for ${attackType}:`, error)
+      }
+    }, 3000) // Poll every 3 seconds
+  }
+
+  const stopPolling = (attackType) => {
+    if (pollingIntervals.current[attackType]) {
+      clearInterval(pollingIntervals.current[attackType])
+      pollingIntervals.current[attackType] = null
+    }
+  }
+
+  // ==================== API FUNCTIONS ====================
+
+  const checkAPIHealth = async () => {
+    const result = await api.current.checkHealth()
+    if (result.success) {
+      setApiStatus({
+        status: result.data.status,
+        attacks: result.data.active_attacks,
+      })
+    } else {
+      setError("api", "Failed to connect to backend server")
+    }
+  }
+
+  const scanAccessPoints = async () => {
+    setLoading((prev) => ({ ...prev, scan: true }))
+    setErrors((prev) => {
+      const newErrors = { ...prev }
+      delete newErrors.scan
+      return newErrors
+    })
+
+    const result = await api.current.scanAccessPoints(scanConfig.interface, scanConfig.duration, scanConfig.advanced)
+
+    setLoading((prev) => ({ ...prev, scan: false }))
+
+    if (result.success) {
+      setAccessPoints(result.data.access_points)
+      addLog("deauth", `Found ${result.data.access_points.length} access points`)
+    } else {
+      setError("scan", `Scan failed: ${result.error}`)
+      addLog("deauth", `Scan failed: ${result.error}`)
+    }
+  }
+
+  const discoverClients = async () => {
+    setLoading((prev) => ({ ...prev, discover: true }))
+    setErrors((prev) => {
+      const newErrors = { ...prev }
+      delete newErrors.discover
+      return newErrors
+    })
+
+    const result = await api.current.discoverClients(scanConfig.interface)
+
+    setLoading((prev) => ({ ...prev, discover: false }))
+
+    if (result.success) {
+      setNetworkClients(result.data.clients)
+      addLog("icmp", `Found ${result.data.clients.length} network clients`)
+    } else {
+      setError("discover", `Discovery failed: ${result.error}`)
+      addLog("icmp", `Discovery failed: ${result.error}`)
+    }
+  }
+
+  const discoverMITMClients = async () => {
+    setLoading((prev) => ({ ...prev, mitmDiscover: true }))
+    setErrors((prev) => {
+      const newErrors = { ...prev }
+      delete newErrors.mitmDiscover
+      return newErrors
+    })
+
+    const result = await api.current.discoverMITMClients(mitmConfig.interface)
+
+    setLoading((prev) => ({ ...prev, mitmDiscover: false }))
+
+    if (result.success) {
+      setMitmClients(result.data.clients)
+      addLog("mitm", `Found ${result.data.clients.length} network clients`)
+      if (result.data.network_info) {
+        addLog(
+          "mitm",
+          `Network: ${result.data.network_info.network_range} | Gateway: ${result.data.network_info.gateway_ip}`,
+        )
+      }
+    } else {
+      setError("mitmDiscover", `MITM Discovery failed: ${result.error}`)
+      addLog("mitm", `MITM Discovery failed: ${result.error}`)
+    }
+  }
+
+  // ==================== DEAUTH ATTACK FUNCTIONS ====================
+
+  const startDeauthAttack = async () => {
+    if (!deauthConfig.ssid || !deauthConfig.bssid) {
+      setError("deauth", "Please fill in SSID and BSSID")
+      return
+    }
+
+    const result = await api.current.startDeauthAttack(
+      deauthConfig.interface,
+      deauthConfig.ssid,
+      deauthConfig.bssid,
+      deauthConfig.channel,
+    )
+
+    if (result.success) {
+      const attackId = result.data.attack_id
+      setAttackStates((prev) => ({
+        ...prev,
+        deauth: { running: true, id: attackId },
+      }))
+      addLog("deauth", `Attack started on ${deauthConfig.ssid} (${deauthConfig.bssid})`)
+
+      // Start polling for status
+      startPolling("deauth", attackId, api.current.getDeauthStatus.bind(api.current))
+    } else {
+      setError("deauth", `Attack failed: ${result.error}`)
+    }
+  }
+
+  const stopDeauthAttack = async () => {
+    if (attackStates.deauth.id) {
+      const result = await api.current.stopDeauthAttack(attackStates.deauth.id)
+      if (result.success) {
+        stopPolling("deauth")
+        setAttackStates((prev) => ({
+          ...prev,
+          deauth: { running: false, id: null },
+        }))
+        addLog("deauth", "Attack stopped by user")
+      }
+    }
+  }
+
+  // ==================== ICMP ATTACK FUNCTIONS ====================
+
+  const startICMPAttack = async () => {
+    if (!icmpConfig.targetIP) {
+      setError("icmp", "Please enter target IP address")
+      return
+    }
+
+    const result = await api.current.startICMPFlood(
+      icmpConfig.interface,
+      icmpConfig.targetIP,
+      icmpConfig.packetSize,
+      icmpConfig.delay,
+    )
+
+    if (result.success) {
+      const attackId = result.data.attack_id
+      setAttackStates((prev) => ({
+        ...prev,
+        icmp: { running: true, id: attackId },
+      }))
+      addLog("icmp", `ICMP flood started on ${icmpConfig.targetIP}`)
+
+      // Start polling for status
+      startPolling("icmp", attackId, api.current.getICMPStatus.bind(api.current))
+    } else {
+      setError("icmp", `Attack failed: ${result.error}`)
+    }
+  }
+
+  const stopICMPAttack = async () => {
+    if (attackStates.icmp.id) {
+      const result = await api.current.stopICMPFlood(attackStates.icmp.id)
+      if (result.success) {
+        stopPolling("icmp")
+        setAttackStates((prev) => ({
+          ...prev,
+          icmp: { running: false, id: null },
+        }))
+        addLog("icmp", "Attack stopped by user")
+      }
+    }
+  }
+
+  // ==================== MITM ATTACK FUNCTIONS ====================
+
+  const startMITMAttack = async () => {
+    if (mitmConfig.selectedTargets.length === 0) {
+      setError("mitm", "Please select at least one target")
+      return
+    }
+
+    const result = await api.current.startMITMAttack(mitmConfig.interface, mitmConfig.selectedTargets)
+
+    if (result.success) {
+      const attackId = result.data.attack_id
+      setAttackStates((prev) => ({
+        ...prev,
+        mitm: { running: true, id: attackId },
+      }))
+      addLog("mitm", `MITM attack started on ${mitmConfig.selectedTargets.length} targets`)
+
+      // Start polling for status and traffic
+      startPolling(
+        "mitm",
+        attackId,
+        api.current.getMITMStatus.bind(api.current),
+        api.current.getMITMTraffic.bind(api.current),
+      )
+    } else {
+      setError("mitm", `Attack failed: ${result.error}`)
+    }
+  }
+
+  const stopMITMAttack = async () => {
+    if (attackStates.mitm.id) {
+      const result = await api.current.stopMITMAttack(attackStates.mitm.id)
+      if (result.success) {
+        stopPolling("mitm")
+        setAttackStates((prev) => ({
+          ...prev,
+          mitm: { running: false, id: null },
+        }))
+        addLog("mitm", "Attack stopped by user")
+        setMitmTraffic([])
+      }
+    }
+  }
+
+  // ==================== HELPER FUNCTIONS ====================
+
+  const selectAP = (ap) => {
+    setDeauthConfig((prev) => ({
+      ...prev,
+      ssid: ap.ssid || "Hidden_Network",
+      bssid: ap.bssid,
+      channel: Number.parseInt(ap.channel) || 6,
+    }))
+    addLog("deauth", `Selected AP: ${ap.ssid} (${ap.bssid})`)
+  }
+
+  const selectClient = (client) => {
+    setIcmpConfig((prev) => ({
+      ...prev,
+      targetIP: client.ip,
+    }))
+    addLog("icmp", `Selected target: ${client.ip}`)
+  }
+
+  const toggleMITMTarget = (client) => {
+    setMitmConfig((prev) => {
+      const isSelected = prev.selectedTargets.includes(client.ip)
+      const newTargets = isSelected
+        ? prev.selectedTargets.filter((ip) => ip !== client.ip)
+        : [...prev.selectedTargets, client.ip]
+
+      return {
+        ...prev,
+        selectedTargets: newTargets,
+      }
+    })
+  }
+
+  const stopAllAttacks = async () => {
+    // Stop all local polling
+    Object.keys(pollingIntervals.current).forEach((attackType) => {
+      stopPolling(attackType)
+    })
+
+    // Stop all attacks on server
+    const result = await api.current.stopAllAttacks()
+    if (result.success) {
+      setAttackStates({
+        deauth: { running: false, id: null },
+        icmp: { running: false, id: null },
+        mitm: { running: false, id: null },
+      })
+      setMitmTraffic([])
+      addLog("deauth", "All attacks stopped")
+      addLog("icmp", "All attacks stopped")
+      addLog("mitm", "All attacks stopped")
+    }
+  }
+
+  // ==================== RENDER ====================
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <Shield className="h-8 w-8 text-red-500 mr-3" />
+              <h1 className="text-xl font-bold">Airstrike Control Panel</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div
+                className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                  apiStatus.status === "healthy" ? "bg-green-900 text-green-300" : "bg-red-900 text-red-300"
+                }`}
+              >
+                <Activity className="h-4 w-4" />
+                <span>{apiStatus.status}</span>
+                <span>•</span>
+                <span>{apiStatus.attacks} active</span>
+              </div>
+              <button onClick={checkAPIHealth} className="p-2 text-gray-400 hover:text-white transition-colors">
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {Object.entries(errors).map(([key, error]) => (
+          <div key={key} className="mb-4 bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded">
+            <div className="flex items-center">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              <span>{error}</span>
+            </div>
+          </div>
+        ))}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Configuration */}
+          <div className="space-y-8">
+            {/* Interface Configuration */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Wifi className="h-5 w-5 mr-2" />
+                Interface Configuration
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Network Interface</label>
+                  <input
+                    type="text"
+                    value={scanConfig.interface}
+                    onChange={(e) => {
+                      setScanConfig((prev) => ({ ...prev, interface: e.target.value }))
+                      setMitmConfig((prev) => ({ ...prev, interface: e.target.value }))
+                    }}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., wlan0"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Scan Duration (s)</label>
+                    <input
+                      type="number"
+                      value={scanConfig.duration}
+                      onChange={(e) =>
+                        setScanConfig((prev) => ({ ...prev, duration: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min="5"
+                      max="300"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={scanConfig.advanced}
+                        onChange={(e) => setScanConfig((prev) => ({ ...prev, advanced: e.target.checked }))}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-300">Advanced Scan</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Access Point Scanning */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Search className="h-5 w-5 mr-2" />
+                Access Point Discovery
+              </h2>
+              <button
+                onClick={scanAccessPoints}
+                disabled={loading.scan}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+              >
+                {loading.scan ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Scanning...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Scan Access Points
+                  </>
+                )}
+              </button>
+
+              {accessPoints.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">Found {accessPoints.length} Access Points:</h3>
+                  <div className="max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-gray-400 border-b border-gray-700">
+                          <th className="text-left py-2">SSID</th>
+                          <th className="text-left py-2">Channel</th>
+                          <th className="text-left py-2">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accessPoints.map((ap, index) => (
+                          <tr key={index} className="border-b border-gray-700">
+                            <td className="py-2 truncate max-w-32" title={ap.ssid || "Hidden"}>
+                              {ap.ssid || "Hidden"}
+                            </td>
+                            <td className="py-2">{ap.channel}</td>
+                            <td className="py-2">
+                              <button
+                                onClick={() => selectAP(ap)}
+                                className="text-blue-400 hover:text-blue-300 text-xs"
+                              >
+                                Select
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Client Discovery */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Network Client Discovery
+              </h2>
+              <div className="space-y-2">
+                <button
+                  onClick={discoverClients}
+                  disabled={loading.discover}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                >
+                  {loading.discover ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Discovering...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="h-4 w-4 mr-2" />
+                      Discover ICMP Clients
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={discoverMITMClients}
+                  disabled={loading.mitmDiscover}
+                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                >
+                  {loading.mitmDiscover ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Discovering...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Discover MITM Clients
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {networkClients.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">ICMP Clients ({networkClients.length}):</h3>
+                  <div className="max-h-32 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {networkClients.map((client, index) => (
+                          <tr key={index} className="border-b border-gray-700">
+                            <td className="py-1">{client.ip}</td>
+                            <td className="py-1">
+                              <button
+                                onClick={() => selectClient(client)}
+                                className="text-blue-400 hover:text-blue-300 text-xs"
+                              >
+                                Select
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {mitmClients.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">
+                    MITM Clients ({mitmClients.length}) - Selected: {mitmConfig.selectedTargets.length}
+                  </h3>
+                  <div className="max-h-32 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {mitmClients.map((client, index) => (
+                          <tr key={index} className="border-b border-gray-700">
+                            <td className="py-1">{client.ip}</td>
+                            <td className="py-1 text-xs text-gray-400">{client.hostname}</td>
+                            <td className="py-1">
+                              <button
+                                onClick={() => toggleMITMTarget(client)}
+                                className={`text-xs px-2 py-1 rounded ${
+                                  mitmConfig.selectedTargets.includes(client.ip)
+                                    ? "bg-purple-600 text-white"
+                                    : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+                                }`}
+                              >
+                                {mitmConfig.selectedTargets.includes(client.ip) ? "Selected" : "Select"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Middle Column - Attacks */}
+          <div className="space-y-8">
+            {/* Deauth Attack */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Zap className="h-5 w-5 mr-2 text-yellow-500" />
+                Deauthentication Attack
+              </h2>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">SSID</label>
+                    <input
+                      type="text"
+                      value={deauthConfig.ssid}
+                      onChange={(e) => setDeauthConfig((prev) => ({ ...prev, ssid: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      placeholder="Network name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Channel</label>
+                    <input
+                      type="number"
+                      value={deauthConfig.channel}
+                      onChange={(e) =>
+                        setDeauthConfig((prev) => ({ ...prev, channel: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      min="1"
+                      max="14"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">BSSID (MAC Address)</label>
+                  <input
+                    type="text"
+                    value={deauthConfig.bssid}
+                    onChange={(e) => setDeauthConfig((prev) => ({ ...prev, bssid: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="aa:bb:cc:dd:ee:ff"
+                  />
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={startDeauthAttack}
+                    disabled={attackStates.deauth.running}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {attackStates.deauth.running ? (
+                      <>
+                        <Square className="h-4 w-4 mr-2" />
+                        Attack Running
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Attack
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={stopDeauthAttack}
+                    disabled={!attackStates.deauth.running}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Deauth Logs */}
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-2">Real-time Updates:</h3>
+                <div className="bg-gray-900 rounded-md p-3 h-24 overflow-y-auto text-xs font-mono">
+                  {logs.deauth.map((log, index) => (
+                    <div key={index} className="text-gray-300">
+                      {log}
+                    </div>
+                  ))}
+                  {logs.deauth.length === 0 && <div className="text-gray-500">No activity yet...</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* ICMP Flood Attack */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Waves className="h-5 w-5 mr-2 text-blue-500" />
+                ICMP Flood Attack
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Target IP Address</label>
+                  <input
+                    type="text"
+                    value={icmpConfig.targetIP}
+                    onChange={(e) => setIcmpConfig((prev) => ({ ...prev, targetIP: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="192.168.1.100"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Packet Size</label>
+                    <input
+                      type="number"
+                      value={icmpConfig.packetSize}
+                      onChange={(e) =>
+                        setIcmpConfig((prev) => ({ ...prev, packetSize: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min="28"
+                      max="1500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Delay (s)</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={icmpConfig.delay}
+                      onChange={(e) => setIcmpConfig((prev) => ({ ...prev, delay: Number.parseFloat(e.target.value) }))}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={startICMPAttack}
+                    disabled={attackStates.icmp.running}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {attackStates.icmp.running ? (
+                      <>
+                        <Square className="h-4 w-4 mr-2" />
+                        Attack Running
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Attack
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={stopICMPAttack}
+                    disabled={!attackStates.icmp.running}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* ICMP Logs */}
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-2">Real-time Updates:</h3>
+                <div className="bg-gray-900 rounded-md p-3 h-24 overflow-y-auto text-xs font-mono">
+                  {logs.icmp.map((log, index) => (
+                    <div key={index} className="text-gray-300">
+                      {log}
+                    </div>
+                  ))}
+                  {logs.icmp.length === 0 && <div className="text-gray-500">No activity yet...</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* MITM Attack */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Eye className="h-5 w-5 mr-2 text-purple-500" />
+                Man-in-the-Middle Attack
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Selected Targets ({mitmConfig.selectedTargets.length})
+                  </label>
+                  <div className="bg-gray-700 rounded-md p-2 min-h-16 max-h-20 overflow-y-auto">
+                    {mitmConfig.selectedTargets.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {mitmConfig.selectedTargets.map((ip, index) => (
+                          <span key={index} className="bg-purple-600 text-white px-2 py-1 rounded text-xs">
+                            {ip}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-gray-400 text-sm">No targets selected</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={startMITMAttack}
+                    disabled={attackStates.mitm.running}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {attackStates.mitm.running ? (
+                      <>
+                        <Square className="h-4 w-4 mr-2" />
+                        Attack Running
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start MITM
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={stopMITMAttack}
+                    disabled={!attackStates.mitm.running}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* MITM Logs */}
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-2">Real-time Updates:</h3>
+                <div className="bg-gray-900 rounded-md p-3 h-24 overflow-y-auto text-xs font-mono">
+                  {logs.mitm.map((log, index) => (
+                    <div key={index} className="text-gray-300">
+                      {log}
+                    </div>
+                  ))}
+                  {logs.mitm.length === 0 && <div className="text-gray-500">No activity yet...</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Traffic & Controls */}
+          <div className="space-y-8">
+            {/* Captured Traffic */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Globe className="h-5 w-5 mr-2 text-green-500" />
+                Captured Traffic
+              </h2>
+
+              <div className="bg-gray-900 rounded-md p-3 h-80 overflow-y-auto">
+                {mitmTraffic.length > 0 ? (
+                  <div className="space-y-2">
+                    {mitmTraffic.map((traffic, index) => (
+                      <div key={index} className="border-b border-gray-700 pb-2">
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-xs px-2 py-1 rounded ${
+                              traffic.type === "DNS" ? "bg-blue-900 text-blue-300" : "bg-green-900 text-green-300"
+                            }`}
+                          >
+                            {traffic.type}
+                          </span>
+                          <span className="text-xs text-gray-400">{traffic.timestamp}</span>
+                        </div>
+                        <div className="text-sm text-gray-300 mt-1">
+                          <div className="text-xs text-gray-400">From: {traffic.source_ip}</div>
+                          <div className={traffic.credentials ? "text-red-300 font-bold" : ""}>{traffic.details}</div>
+                          {traffic.type === "HTTP" && (
+                            <div className="text-xs text-gray-500">
+                              {traffic.method} {traffic.host}
+                              {traffic.path}
+                            </div>
+                          )}
+                          {traffic.type === "DNS" && (
+                            <div className="text-xs text-gray-500">Query: {traffic.domain}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 text-center py-8">
+                    {attackStates.mitm.running ? "Waiting for traffic..." : "Start MITM attack to capture traffic"}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Emergency Stop */}
+            <div className="bg-red-900 border border-red-700 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center text-red-300">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Emergency Controls
+              </h2>
+              <button
+                onClick={stopAllAttacks}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-md transition-colors flex items-center justify-center"
+              >
+                <Square className="h-4 w-4 mr-2" />
+                STOP ALL ATTACKS
+              </button>
+            </div>
+
+            {/* Attack Status Summary */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Activity className="h-5 w-5 mr-2" />
+                Attack Status
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Deauth Attack</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.deauth.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.deauth.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">ICMP Flood</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.icmp.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.icmp.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">MITM Attack</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.mitm.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.mitm.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default App
