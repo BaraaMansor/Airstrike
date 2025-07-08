@@ -37,12 +37,25 @@ class ICMPFloodRequest(BaseModel):
     target_ip: Optional[str] = Field(None, description="Target IP address for flood attack")
     packet_size: int = Field(default=64, description="ICMP packet size in bytes", ge=28, le=65507)
     delay: float = Field(default=0.001, description="Delay between packets in seconds", ge=0.0, le=1.0)
+    use_hping3: bool = Field(default=False, description="Use hping3 for ICMP flood instead of Scapy")
 
 # MITM Attack
 class MITMAttackRequest(BaseModel):
     """Request model for MITM attack"""
     interface: str = Field(description="Network interface connected to AP")
     target_ips: List[str] = Field(description="List of target IP addresses")
+
+# Handshake Capture Attack
+class HandshakeCaptureRequest(BaseModel):
+    """Request model for handshake capture attack"""
+    interface: str = Field(description="WiFi interface in monitor mode")
+    ssid: str = Field(description="Target network SSID")
+    bssid: str = Field(description="Target network BSSID (MAC address)", pattern=r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$')
+    channel: int = Field(description="WiFi channel of target network", ge=1, le=14)
+    wordlist: str = Field(default="/usr/share/wordlists/rockyou.txt", description="Path to wordlist for cracking")
+    timeout: int = Field(default=60, description="Capture timeout in seconds", ge=30, le=300)
+    deauth_count: int = Field(default=5, description="Number of deauth packets per burst", ge=1, le=20)
+    deauth_interval: float = Field(default=2.0, description="Interval between deauth bursts in seconds", ge=0.5, le=10.0)
 
 # Response Models
 class NetworkClient(BaseModel):
@@ -81,6 +94,13 @@ class AttackStats(BaseModel):
     packets_captured: Optional[int] = Field(None, description="Packets captured")
     dns_requests: Optional[int] = Field(None, description="DNS requests captured")
     http_requests: Optional[int] = Field(None, description="HTTP requests captured")
+    # Handshake capture specific fields
+    eapol_packets: Optional[int] = Field(None, description="Number of EAPOL packets captured")
+    handshake_captured: Optional[bool] = Field(None, description="Whether 4-way handshake was captured")
+    cracking_status: Optional[str] = Field(None, description="Status of password cracking")
+    password_found: Optional[str] = Field(None, description="Password if found")
+    wordlist_used: Optional[str] = Field(None, description="Wordlist used for cracking")
+    capture_file: Optional[str] = Field(None, description="Path to captured handshake file")
 
 class AttackStatusResponse(BaseModel):
     """Response model for attack status"""

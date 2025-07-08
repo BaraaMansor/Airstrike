@@ -287,6 +287,67 @@ class AirstrikeAPI {
     }
   }
 
+  // ==================== HANDSHAKE CAPTURE HTTP ENDPOINTS ====================
+
+  async startHandshakeCapture(wifiInterface, ssid, bssid, channel, wordlist = "/usr/share/wordlists/rockyou.txt", 
+                             timeout = 60, deauthCount = 5, deauthInterval = 2.0) {
+    try {
+      const response = await fetch(`${this.baseURL}/attacks/handshake-capture/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interface: wifiInterface,
+          ssid: ssid,
+          bssid: bssid,
+          channel: channel,
+          wordlist: wordlist,
+          timeout: timeout,
+          deauth_count: deauthCount,
+          deauth_interval: deauthInterval,
+        }),
+      })
+
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: data,
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async stopHandshakeCapture(attackId) {
+    try {
+      const response = await fetch(`${this.baseURL}/attacks/handshake-capture/stop/${attackId}`, {
+        method: "POST",
+      })
+
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: data,
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async getHandshakeCaptureStatus(attackId) {
+    try {
+      const response = await fetch(`${this.baseURL}/attacks/handshake-capture/status/${attackId}`)
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: data,
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
   // ==================== ATTACK MANAGEMENT ====================
 
   async getActiveAttacks() {

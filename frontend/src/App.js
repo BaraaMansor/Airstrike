@@ -29,7 +29,7 @@ const App = () => {
   const [networkClients, setNetworkClients] = useState([])
   const [mitmClients, setMitmClients] = useState([])
   const [mitmTraffic, setMitmTraffic] = useState([])
-  const [logs, setLogs] = useState({ deauth: [], icmp: [], mitm: [] })
+  const [logs, setLogs] = useState({ deauth: [], icmp: [], mitm: [], handshake: [] })
   const [loading, setLoading] = useState({ scan: false, discover: false, mitmDiscover: false })
   const [errors, setErrors] = useState({})
 
@@ -59,11 +59,23 @@ const App = () => {
     selectedTargets: [],
   })
 
+  const [handshakeConfig, setHandshakeConfig] = useState({
+    interface: "wlan0",
+    ssid: "",
+    bssid: "",
+    channel: 6,
+    wordlist: "/usr/share/wordlists/rockyou.txt",
+    timeout: 60,
+    deauthCount: 5,
+    deauthInterval: 2.0,
+  })
+
   // Attack states
   const [attackStates, setAttackStates] = useState({
     deauth: { running: false, id: null },
     icmp: { running: false, id: null },
     mitm: { running: false, id: null },
+    handshake: { running: false, id: null },
   })
 
   // Polling intervals
@@ -142,10 +154,26 @@ const App = () => {
                 setMitmTraffic(trafficResult.data.traffic || [])
               }
             }
+          } else if (attackType === "handshake") {
+            addLog(
+              "handshake",
+              `📊 EAPOL: ${stats.eapol_packets || 0} | Status: ${stats.status || 'running'} | Duration: ${stats.duration || 0}s`,
+            )
+            
+            // Log special events
+            if (stats.handshake_captured && !stats.handshake_captured_logged) {
+              addLog("handshake", "🎯 4-way handshake captured! Starting password cracking...")
+              stats.handshake_captured_logged = true
+            }
+            
+            if (stats.password_found && !stats.password_found_logged) {
+              addLog("handshake", `🔓 Password found: ${stats.password_found}`)
+              stats.password_found_logged = true
+            }
           }
 
           // Check if attack is still running
-          if (!stats.running) {
+          if (stats.status !== 'running' && !stats.running) {
             clearInterval(pollingIntervals.current[attackType])
             setAttackStates((prev) => ({
               ...prev,
@@ -383,6 +411,54 @@ const App = () => {
     }
   }
 
+  // ==================== HANDSHAKE CAPTURE ATTACK FUNCTIONS ====================
+
+  const startHandshakeCapture = async () => {
+    if (!handshakeConfig.ssid || !handshakeConfig.bssid) {
+      setError("handshake", "Please fill in SSID and BSSID")
+      return
+    }
+
+    const result = await api.current.startHandshakeCapture(
+      handshakeConfig.interface,
+      handshakeConfig.ssid,
+      handshakeConfig.bssid,
+      handshakeConfig.channel,
+      handshakeConfig.wordlist,
+      handshakeConfig.timeout,
+      handshakeConfig.deauthCount,
+      handshakeConfig.deauthInterval
+    )
+
+    if (result.success) {
+      const attackId = result.data.attack_id
+      setAttackStates((prev) => ({
+        ...prev,
+        handshake: { running: true, id: attackId },
+      }))
+      addLog("handshake", `Handshake capture started on ${handshakeConfig.ssid} (${handshakeConfig.bssid})`)
+
+      // Start polling for status
+      startPolling("handshake", attackId, api.current.getHandshakeCaptureStatus.bind(api.current))
+    } else {
+      setError("handshake", `Attack failed: ${result.error}`)
+    }
+  }
+
+  const stopHandshakeCapture = async () => {
+    if (attackStates.handshake.id) {
+      const result = await api.current.stopHandshakeCapture(attackStates.handshake.id)
+      if (result.success) {
+        stopPolling("handshake")
+        setAttackStates((prev) => ({
+          ...prev,
+          handshake: { running: false, id: null },
+        }))
+        addLog("handshake", "Attack stopped by user")
+      }
+    }
+  }
+
   // ==================== HELPER FUNCTIONS ====================
 
   const selectAP = (ap) => {
@@ -392,7 +468,14 @@ const App = () => {
       bssid: ap.bssid,
       channel: Number.parseInt(ap.channel) || 6,
     }))
+    setHandshakeConfig((prev) => ({
+      ...prev,
+      ssid: ap.ssid || "Hidden_Network",
+      bssid: ap.bssid,
+      channel: Number.parseInt(ap.channel) || 6,
+    }))
     addLog("deauth", `Selected AP: ${ap.ssid} (${ap.bssid})`)
+    addLog("handshake", `Selected AP: ${ap.ssid} (${ap.bssid})`)
   }
 
   const selectClient = (client) => {
@@ -430,11 +513,13 @@ const App = () => {
         deauth: { running: false, id: null },
         icmp: { running: false, id: null },
         mitm: { running: false, id: null },
+        handshake: { running: false, id: null },
       })
       setMitmTraffic([])
       addLog("deauth", "All attacks stopped")
       addLog("icmp", "All attacks stopped")
       addLog("mitm", "All attacks stopped")
+      addLog("handshake", "All attacks stopped")
     }
   }
 
@@ -498,6 +583,7 @@ const App = () => {
                     onChange={(e) => {
                       setScanConfig((prev) => ({ ...prev, interface: e.target.value }))
                       setMitmConfig((prev) => ({ ...prev, interface: e.target.value }))
+                      setHandshakeConfig((prev) => ({ ...prev, interface: e.target.value }))
                     }}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., wlan0"
@@ -938,6 +1024,144 @@ const App = () => {
                 </div>
               </div>
             </div>
+
+            {/* Handshake Capture Attack */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Shield className="h-5 w-5 mr-2 text-orange-500" />
+                Handshake Capture Attack
+              </h2>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">SSID</label>
+                    <input
+                      type="text"
+                      value={handshakeConfig.ssid}
+                      onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, ssid: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="Network name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Channel</label>
+                    <input
+                      type="number"
+                      value={handshakeConfig.channel}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, channel: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="1"
+                      max="14"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">BSSID (MAC Address)</label>
+                  <input
+                    type="text"
+                    value={handshakeConfig.bssid}
+                    onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, bssid: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="aa:bb:cc:dd:ee:ff"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Wordlist Path</label>
+                  <input
+                    type="text"
+                    value={handshakeConfig.wordlist}
+                    onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, wordlist: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="/usr/share/wordlists/rockyou.txt"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Timeout (s)</label>
+                    <input
+                      type="number"
+                      value={handshakeConfig.timeout}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, timeout: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="30"
+                      max="300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Deauth Count</label>
+                    <input
+                      type="number"
+                      value={handshakeConfig.deauthCount}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, deauthCount: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="1"
+                      max="20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Deauth Interval (s)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={handshakeConfig.deauthInterval}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, deauthInterval: Number.parseFloat(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="0.5"
+                      max="10.0"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={startHandshakeCapture}
+                    disabled={attackStates.handshake.running}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {attackStates.handshake.running ? (
+                      <>
+                        <Square className="h-4 w-4 mr-2" />
+                        Attack Running
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Attack
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={stopHandshakeCapture}
+                    disabled={!attackStates.handshake.running}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Handshake Logs */}
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-2">Real-time Updates:</h3>
+                <div className="bg-gray-900 rounded-md p-3 h-24 overflow-y-auto text-xs font-mono">
+                  {logs.handshake.map((log, index) => (
+                    <div key={index} className="text-gray-300">
+                      {log}
+                    </div>
+                  ))}
+                  {logs.handshake.length === 0 && <div className="text-gray-500">No activity yet...</div>}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Right Column - Traffic & Controls */}
@@ -1038,6 +1262,16 @@ const App = () => {
                     }`}
                   >
                     {attackStates.mitm.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Handshake Capture</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.handshake.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.handshake.running ? "RUNNING" : "STOPPED"}
                   </span>
                 </div>
               </div>

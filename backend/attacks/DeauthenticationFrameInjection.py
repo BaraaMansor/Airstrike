@@ -1,6 +1,7 @@
 import subprocess
 import time
 import threading
+import asyncio
 from scapy.all import *
 from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap
 import json
@@ -188,7 +189,8 @@ class DeauthAttack:
             'clients_targeted': self.stats['clients_targeted'],
             'errors': self.stats['errors'],
             'packets_per_second': self.stats['packets_sent'] / max(self.stats['duration'], 1),
-            'status': 'running' if self.running else 'stopped'
+            'status': 'running' if self.running else 'stopped',
+            'running': self.running
         }
     
     async def start_attack(self):

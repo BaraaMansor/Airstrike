@@ -276,6 +276,7 @@ class MITMAttack:
         
         return {
             'running': self.running,
+            'status': 'running' if self.running else 'stopped',
             'target_count': len(self.target_clients),
             'packets_captured': self.stats['packets_captured'],
             'dns_requests': self.stats['dns_requests'],
