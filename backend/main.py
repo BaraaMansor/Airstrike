@@ -42,6 +42,10 @@ app.add_middleware(
     allow_headers=["*"], 
 )
 
+# Register Evil Twin API router
+from evil_twin.api import router as evil_twin_router
+app.include_router(evil_twin_router)
+
 # Store active attacks
 active_attacks = {}
 

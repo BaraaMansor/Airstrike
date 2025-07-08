@@ -586,3 +586,116 @@ For support and questions:
 ---
 
 **Airstrike** - Advanced WiFi penetration testing made simple and powerful.
+
+## Evil Twin Attack Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. **WiFi Interface Instability**
+**Symptoms:** Frequent disconnects, `handle_probe_req: send failed`, `Failed to set beacon parameters`
+
+**Root Causes:**
+- NetworkManager or wpa_supplicant interfering with the interface
+- Incorrect regulatory domain settings
+- WiFi card doesn't support AP mode
+- Insufficient permissions
+
+**Solutions:**
+```bash
+# Stop conflicting services
+sudo systemctl stop NetworkManager wpa_supplicant
+
+# Set regulatory domain
+sudo iw reg set US
+
+# Reset interface
+sudo ip link set wlan0 down
+sudo iw dev wlan0 set type managed
+sudo ip link set wlan0 up
+
+# Check AP support
+iw dev wlan0 info
+iw phy phy3 info | grep -A 10 "Supported interface modes"
+```
+
+#### 2. **Interface Doesn't Support AP Mode**
+**Check:** Run `iw phy phyX info | grep -A 10 "Supported interface modes"`
+**Solution:** Use a different WiFi adapter (USB adapters are often more reliable)
+
+#### 3. **Permission Issues**
+**Solution:** Always run the backend with `sudo`:
+```bash
+cd backend
+sudo python3 start_backend.py
+```
+
+#### 4. **DNS Not Working**
+**Check:** Verify dnsmasq is running and forwarding queries
+**Solution:** Check logs in `backend/evil_twin/run/evil_twin.log`
+
+#### 5. **Clients Can't Connect**
+**Check:** 
+- Interface is in AP mode
+- No conflicting services
+- Correct channel settings
+- Regulatory domain is set
+
+### Pre-Flight Checklist
+
+Before starting an Evil Twin attack:
+
+1. **Stop NetworkManager and wpa_supplicant**
+2. **Set regulatory domain to US**
+3. **Reset the WiFi interface**
+4. **Verify AP mode support**
+5. **Run with sudo permissions**
+
+### Debugging Commands
+
+```bash
+# Check interface status
+iw dev
+
+# Check AP support
+iw phy phy3 info | grep -A 10 "Supported interface modes"
+
+# Monitor logs
+tail -f backend/evil_twin/run/evil_twin.log
+
+# Check processes
+ps aux | grep -E "(hostapd|dnsmasq|dnsspoof)"
+
+# Test DNS forwarding
+dig @192.168.1.1 google.com
+```
+
+### Hardware Recommendations
+
+For reliable Evil Twin attacks, use:
+- **USB WiFi adapters** (Atheros, Realtek chipsets)
+- **Cards known to support AP mode**
+- **Avoid internal laptop WiFi cards** (often unreliable for AP mode)
+
+### Configuration Files
+
+The Evil Twin attack creates these files in `backend/evil_twin/run/`:
+- `hostapd.conf` - WiFi AP configuration
+- `dnsmasq.conf` - DNS/DHCP server configuration
+- `evil_twin.log` - Combined logs from all services
+- `evil_twin.pid` - Process IDs for cleanup
+
+### Troubleshooting Flow
+
+1. **Check if attack is running:** `curl http://localhost:8000/api/evil-twin/status`
+2. **Check logs:** `curl http://localhost:8000/api/evil-twin/logs`
+3. **Stop and restart:** Use the frontend or API endpoints
+4. **Verify interface:** Check `iw dev` output
+5. **Test connectivity:** Try connecting a device to the Evil Twin network
+
+### Getting Help
+
+If issues persist:
+1. Check the logs in `backend/evil_twin/run/evil_twin.log`
+2. Verify your WiFi card supports AP mode
+3. Try a different WiFi adapter
+4. Ensure you're running with sudo permissions

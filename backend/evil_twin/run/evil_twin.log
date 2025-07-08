@@ -1,0 +1,387 @@
+1
+dnsmasq: started, version 2.91test9 cachesize 150
+dnsmasq: compile time options: IPv6 GNU-getopt DBus no-UBus i18n IDN2 DHCP DHCPv6 no-Lua TFTP conntrack ipset nftset auth DNSSEC loop-detect inotify dumpfile
+dnsmasq-dhcp: DHCP, IP range 192.168.1.2 -- 192.168.1.30, lease time 12h
+dnsmasq: using nameserver 8.8.8.8#53
+dnsmasq: reading /etc/resolv.conf
+dnsmasq: using nameserver 8.8.8.8#53
+dnsmasq: using nameserver 8.8.8.8#53
+dnsmasq: read /etc/hosts - 10 names
+dnsspoof: listening on wlan0 [udp dst port 53 and not src 192.168.1.1]
+wlan0: interface state UNINITIALIZED->ENABLED
+wlan0: AP-ENABLED 
+wlan0: STA 8e:35:97:a2:81:60 IEEE 802.11: authenticated
+wlan0: STA 8e:35:97:a2:81:60 IEEE 802.11: associated (aid 1)
+wlan0: AP-STA-CONNECTED 8e:35:97:a2:81:60
+wlan0: STA 8e:35:97:a2:81:60 RADIUS: starting accounting session 0D1838DC6F61A918
+dnsmasq-dhcp: 999157262 available DHCP range: 192.168.1.2 -- 192.168.1.30
+dnsmasq-dhcp: 999157262 vendor class: android-dhcp-12
+dnsmasq-dhcp: 999157262 client provides name: Note10-alkhas-b-Ahmas
+dnsmasq-dhcp: 999157262 DHCPREQUEST(wlan0) 192.168.1.24 8e:35:97:a2:81:60 
+dnsmasq-dhcp: 999157262 tags: wlan0
+dnsmasq-dhcp: 999157262 DHCPACK(wlan0) 192.168.1.24 8e:35:97:a2:81:60 Note10-alkhas-b-Ahmas
+dnsmasq-dhcp: 999157262 requested options: 1:netmask, 3:router, 6:dns-server, 15:domain-name, 
+dnsmasq-dhcp: 999157262 requested options: 26:mtu, 28:broadcast, 51:lease-time, 58:T1, 
+dnsmasq-dhcp: 999157262 requested options: 59:T2, 43:vendor-encap, 114, 108:ipv6-only
+dnsmasq-dhcp: 999157262 next server: 192.168.1.1
+dnsmasq-dhcp: 999157262 sent size:  1 option: 53 message-type  5
+dnsmasq-dhcp: 999157262 sent size:  4 option: 54 server-identifier  192.168.1.1
+dnsmasq-dhcp: 999157262 sent size:  4 option: 51 lease-time  12h
+dnsmasq-dhcp: 999157262 sent size:  4 option: 58 T1  6h
+dnsmasq-dhcp: 999157262 sent size:  4 option: 59 T2  10h30m
+dnsmasq-dhcp: 999157262 sent size:  4 option:  1 netmask  255.255.255.0
+dnsmasq-dhcp: 999157262 sent size:  4 option: 28 broadcast  192.168.1.255
+dnsmasq-dhcp: 999157262 sent size:  4 option:  6 dns-server  192.168.1.1
+dnsmasq-dhcp: 999157262 sent size:  4 option:  3 router  192.168.1.1
+dnsmasq-dhcp: 999157262 available DHCP range: 192.168.1.2 -- 192.168.1.30
+dnsmasq-dhcp: 999157262 vendor class: android-dhcp-12
+dnsmasq-dhcp: 999157262 client provides name: Note10-alkhas-b-Ahmas
+dnsmasq-dhcp: 999157262 DHCPREQUEST(wlan0) 192.168.1.24 8e:35:97:a2:81:60 
+dnsmasq-dhcp: 999157262 tags: wlan0
+dnsmasq-dhcp: 999157262 DHCPACK(wlan0) 192.168.1.24 8e:35:97:a2:81:60 Note10-alkhas-b-Ahmas
+dnsmasq-dhcp: 999157262 requested options: 1:netmask, 3:router, 6:dns-server, 15:domain-name, 
+dnsmasq-dhcp: 999157262 requested options: 26:mtu, 28:broadcast, 51:lease-time, 58:T1, 
+dnsmasq-dhcp: 999157262 requested options: 59:T2, 43:vendor-encap, 114, 108:ipv6-only
+dnsmasq-dhcp: 999157262 next server: 192.168.1.1
+dnsmasq-dhcp: 999157262 sent size:  1 option: 53 message-type  5
+dnsmasq-dhcp: 999157262 sent size:  4 option: 54 server-identifier  192.168.1.1
+dnsmasq-dhcp: 999157262 sent size:  4 option: 51 lease-time  12h
+dnsmasq-dhcp: 999157262 sent size:  4 option: 58 T1  6h
+dnsmasq-dhcp: 999157262 sent size:  4 option: 59 T2  10h30m
+dnsmasq-dhcp: 999157262 sent size:  4 option:  1 netmask  255.255.255.0
+dnsmasq-dhcp: 999157262 sent size:  4 option: 28 broadcast  192.168.1.255
+dnsmasq-dhcp: 999157262 sent size:  4 option:  6 dns-server  192.168.1.1
+dnsmasq-dhcp: 999157262 sent size:  4 option:  3 router  192.168.1.1
+dnsmasq: query[A] connectivitycheck.gstatic.com from 192.168.1.24
+dnsmasq: forwarded connectivitycheck.gstatic.com to 8.8.8.8
+dnsmasq: forwarded connectivitycheck.gstatic.com to 8.8.8.8
+dnsmasq: reply connectivitycheck.gstatic.com is 142.250.181.227
+dnsmasq: query[A] www.google.com from 192.168.1.24
+dnsmasq: forwarded www.google.com to 8.8.8.8
+dnsmasq: query[A] mtalk.google.com from 192.168.1.24
+dnsmasq: forwarded mtalk.google.com to 8.8.8.8
+dnsmasq: query[A] z-m-gateway.facebook.com from 192.168.1.24
+dnsmasq: forwarded z-m-gateway.facebook.com to 8.8.8.8
+dnsmasq: query[A] gear.sca.samsung.com from 192.168.1.24
+dnsmasq: forwarded gear.sca.samsung.com to 8.8.8.8
+dnsmasq: query[A] api.twitter.com from 192.168.1.24
+dnsmasq: forwarded api.twitter.com to 8.8.8.8
+dnsmasq: query[A] video.twimg.com from 192.168.1.24
+dnsmasq: forwarded video.twimg.com to 8.8.8.8
+dnsmasq: query[A] pbs.twimg.com from 192.168.1.24
+dnsmasq: forwarded pbs.twimg.com to 8.8.8.8
+dnsmasq: query[A] global.dev.cftls.t.co from 192.168.1.24
+dnsmasq: forwarded global.dev.cftls.t.co to 8.8.8.8
+dnsmasq: query[A] vk.ru from 192.168.1.24
+dnsmasq: forwarded vk.ru to 8.8.8.8
+dnsmasq: reply www.google.com is 142.250.181.228
+dnsmasq: query[A] quic-api.vk.com from 192.168.1.24
+dnsmasq: forwarded quic-api.vk.com to 8.8.8.8
+dnsmasq: reply mtalk.google.com is <CNAME>
+dnsmasq: reply mobile-gtalk.l.google.com is 66.102.1.188
+dnsmasq: reply vk.ru is 93.186.225.194
+dnsmasq: reply vk.ru is 87.240.132.72
+dnsmasq: reply vk.ru is 87.240.129.133
+dnsmasq: reply vk.ru is 87.240.132.67
+dnsmasq: reply vk.ru is 87.240.132.78
+dnsmasq: reply vk.ru is 87.240.137.164
+dnsmasq: reply gear.sca.samsung.com is <CNAME>
+dnsmasq: reply prd.sca.samsung.com is 54.248.33.113
+dnsmasq: reply prd.sca.samsung.com is 54.248.107.126
+dnsmasq: reply prd.sca.samsung.com is 18.181.0.236
+dnsmasq: reply api.twitter.com is <CNAME>
+dnsmasq: reply api.twitter.com.cdn.cloudflare.net is 162.159.140.229
+dnsmasq: reply api.twitter.com.cdn.cloudflare.net is 172.66.0.227
+dnsmasq: reply z-m-gateway.facebook.com is <CNAME>
+dnsmasq: reply dgw-mini.c10r.facebook.com is 157.240.223.40
+dnsmasq: reply video.twimg.com is <CNAME>
+dnsmasq: reply dualstack.video.twitter.map.fastly.net is 151.101.240.158
+dnsmasq: reply pbs.twimg.com is <CNAME>
+dnsmasq: reply dualstack.twimg.twitter.map.fastly.net is 151.101.240.159
+dnsmasq: reply global.dev.cftls.t.co is <CNAME>
+dnsmasq: reply global.dev.cftls.t.co.cdn.cloudflare.net is 162.159.140.229
+dnsmasq: reply global.dev.cftls.t.co.cdn.cloudflare.net is 172.66.0.227
+dnsmasq: reply quic-api.vk.com is 93.186.226.88
+dnsmasq: reply quic-api.vk.com is 93.186.226.69
+dnsmasq: reply quic-api.vk.com is 93.186.226.79
+dnsmasq: reply quic-api.vk.com is 93.186.226.86
+dnsmasq: reply quic-api.vk.com is 93.186.226.73
+dnsmasq: reply quic-api.vk.com is 93.186.226.68
+dnsmasq: reply quic-api.vk.com is 93.186.226.87
+dnsmasq: reply quic-api.vk.com is 93.186.226.81
+dnsmasq: reply quic-api.vk.com is 93.186.226.70
+dnsmasq: reply quic-api.vk.com is 93.186.226.77
+dnsmasq: reply quic-api.vk.com is 93.186.226.83
+dnsmasq: reply quic-api.vk.com is 93.186.226.75
+dnsmasq: reply quic-api.vk.com is 93.186.226.72
+dnsmasq: reply quic-api.vk.com is 93.186.226.84
+dnsmasq: reply quic-api.vk.com is 93.186.226.66
+dnsmasq: reply quic-api.vk.com is 93.186.226.74
+dnsmasq: reply quic-api.vk.com is 93.186.226.78
+dnsmasq: reply quic-api.vk.com is 93.186.226.67
+dnsmasq: reply quic-api.vk.com is 93.186.226.85
+dnsmasq: reply quic-api.vk.com is 93.186.226.65
+dnsmasq: reply quic-api.vk.com is 93.186.226.76
+dnsmasq: reply quic-api.vk.com is 93.186.226.80
+dnsmasq: reply quic-api.vk.com is 93.186.226.71
+dnsmasq: reply quic-api.vk.com is 93.186.226.82
+192.168.1.24.16487 > 192.168.1.1.53:  40319+ A? connectivitycheck.gstatic.com
+192.168.1.24.58251 > 192.168.1.1.53:  4418+ A? www.google.com
+192.168.1.24.51080 > 192.168.1.1.53:  16250+ A? mtalk.google.com
+192.168.1.24.64879 > 192.168.1.1.53:  10084+ A? z-m-gateway.facebook.com
+192.168.1.24.35706 > 192.168.1.1.53:  37274+ A? gear.sca.samsung.com
+192.168.1.24.38997 > 192.168.1.1.53:  60968+ A? api.twitter.com
+192.168.1.24.12990 > 192.168.1.1.53:  30582+ A? video.twimg.com
+192.168.1.24.61057 > 192.168.1.1.53:  27678+ A? pbs.twimg.com
+192.168.1.24.35810 > 192.168.1.1.53:  7143+ A? global.dev.cftls.t.co
+192.168.1.24.51702 > 192.168.1.1.53:  27936+ A? vk.ru
+192.168.1.24.34675 > 192.168.1.1.53:  40982+ A? quic-api.vk.com
+dnsmasq: query[A] api.vk.com from 192.168.1.24
+dnsmasq: forwarded api.vk.com to 8.8.8.8
+dnsmasq: reply api.vk.com is 87.240.137.207
+dnsmasq: reply api.vk.com is 87.240.137.130
+dnsmasq: reply api.vk.com is 87.240.137.208
+dnsmasq: reply api.vk.com is 87.240.190.70
+dnsmasq: reply api.vk.com is 87.240.129.140
+dnsmasq: reply api.vk.com is 87.240.190.75
+dnsmasq: reply api.vk.com is 87.240.137.206
+dnsmasq: reply api.vk.com is 93.186.225.205
+dnsmasq: reply api.vk.com is 87.240.139.193
+192.168.1.24.36731 > 192.168.1.1.53:  10166+ A? api.vk.com
+dnsmasq: query[A] www.google.com from 192.168.1.24
+dnsmasq: cached www.google.com is 142.250.181.228
+192.168.1.24.40709 > 192.168.1.1.53:  100+ A? www.google.com
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: query[PTR] 216.58.202.4.in-addr.arpa from 192.168.1.24
+dnsmasq: forwarded 216.58.202.4.in-addr.arpa to 8.8.8.8
+dnsmasq: reply google.com is 142.250.186.174
+dnsmasq: reply google.com is 142.250.186.174
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: non-query opcode from 192.168.1.24
+dnsmasq: reply opcode is not implemented
+dnsmasq: query[A] *google.com from 192.168.1.24
+dnsmasq: forwarded *google.com to 8.8.8.8
+dnsmasq: reply 4.202.58.216 is NXDOMAIN
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: cached google.com is 142.250.186.174
+dnsmasq: non-query opcode from 192.168.1.24
+dnsmasq: reply opcode is not implemented
+dnsmasq: query[A] www.goooooooooooooooooooooooooooooooooooooooooooooooooooooooooogle.com from 192.168.1.24
+dnsmasq: forwarded www.goooooooooooooooooooooooooooooooooooooooooooooooooooooooooogle.com to 8.8.8.8
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: reply *google.com is NXDOMAIN
+dnsmasq: forwarded www.goooooooooooooooooooooooooooooooooooooooooooooooooooooooooogle.com to 8.8.8.8
+dnsmasq: forwarded www.goooooooooooooooooooooooooooooooooooooooooooooooooooooooooogle.com to 8.8.8.8
+dnsmasq: reply error is SERVFAIL
+dnsmasq: reply error is SERVFAIL
+192.168.1.24.58001 > 192.168.1.1.53:  3+ A? google.com
+192.168.1.24.57072 > 192.168.1.1.53:  1+ A? google.com
+192.168.1.24.43233 > 192.168.1.1.53:  4+ A? google.com
+192.168.1.24.46247 > 192.168.1.1.53:  6+ A? *google.com
+192.168.1.24.53350 > 192.168.1.1.53:  8+ A? GOOGLE.COM
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: cached google.com is 142.250.186.174
+dnsmasq: non-query opcode from 192.168.1.24
+dnsmasq: reply opcode is not implemented
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: cached google.com is 142.250.186.174
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: cached google.com is 142.250.186.174
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: cached google.com is 142.250.186.174
+dnsmasq: query[A] google.com.onion from 192.168.1.24
+dnsmasq: forwarded google.com.onion to 8.8.8.8
+dnsmasq: query[A] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: query[NS] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: query[PTR] 216.58.202.4.in-addr.arpa from 192.168.1.24
+dnsmasq: cached 4.202.58.216 is NXDOMAIN
+dnsmasq: query[HINFO] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: query[WKS] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: reply google.com.onion is NXDOMAIN
+dnsmasq: reply google.com is 142.250.186.174
+dnsmasq: query[SOA] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: reply google.com is <NS>
+dnsmasq: reply google.com is <NS>
+dnsmasq: reply google.com is <NS>
+dnsmasq: reply google.com is <NS>
+dnsmasq: reply google.com is NODATA
+dnsmasq: reply google.com is NODATA
+dnsmasq: query[CNAME] google.com from 192.168.1.24
+dnsmasq: forwarded google.com to 8.8.8.8
+dnsmasq: reply google.com is <SOA>
+dnsmasq: query[A] www.google.com from 192.168.1.24
+dnsmasq: cached www.google.com is 142.250.181.228
+dnsmasq: reply google.com is NODATA
+dnsmasq: query[A] queuev4.vk.com from 192.168.1.24
+dnsmasq: forwarded queuev4.vk.com to 8.8.8.8
+192.168.1.24.48371 > 192.168.1.1.53:  17+ A? google.com.onion
+192.168.1.24.49332 > 192.168.1.1.53:  37619+ A? www.google.com
+192.168.1.24.58634 > 192.168.1.1.53:  23753+ A? queuev4.vk.com
+dnsmasq: reply queuev4.vk.com is 93.186.237.6
+dnsmasq: reply queuev4.vk.com is 93.186.237.7
+dnsmasq: reply queuev4.vk.com is 95.213.56.3
+dnsmasq: reply queuev4.vk.com is 93.186.237.16
+dnsmasq: reply queuev4.vk.com is 95.213.56.4
+dnsmasq: reply queuev4.vk.com is 95.213.56.2
+dnsmasq: query[A] i.instagram.com from 192.168.1.24
+dnsmasq: forwarded i.instagram.com to 8.8.8.8
+dnsmasq: reply i.instagram.com is <CNAME>
+dnsmasq: reply instagram.c10r.instagram.com is 157.240.223.63
+192.168.1.24.5117 > 192.168.1.1.53:  13896+ A? i.instagram.com
+dnsmasq: query[A] graph.facebook.com from 192.168.1.24
+dnsmasq: forwarded graph.facebook.com to 8.8.8.8
+dnsmasq: forwarded graph.facebook.com to 8.8.8.8
+dnsmasq: reply graph.facebook.com is <CNAME>
+dnsmasq: reply star.c10r.facebook.com is 157.240.223.17
+dnsmasq: query[A] youtubei.googleapis.com from 192.168.1.24
+dnsmasq: forwarded youtubei.googleapis.com to 8.8.8.8
+dnsmasq: query[A] wangyiyun-js.oss-cn-shanghai.aliyuncs.com from 192.168.1.24
+dnsmasq: forwarded wangyiyun-js.oss-cn-shanghai.aliyuncs.com to 8.8.8.8
+dnsmasq: reply youtubei.googleapis.com is 216.58.212.138
+dnsmasq: reply youtubei.googleapis.com is 142.250.185.106
+dnsmasq: reply youtubei.googleapis.com is 142.250.186.138
+dnsmasq: reply youtubei.googleapis.com is 142.250.184.202
+dnsmasq: reply youtubei.googleapis.com is 142.250.185.202
+dnsmasq: reply youtubei.googleapis.com is 142.250.186.74
+dnsmasq: reply youtubei.googleapis.com is 142.250.185.138
+dnsmasq: reply youtubei.googleapis.com is 142.250.186.170
+dnsmasq: reply youtubei.googleapis.com is 172.217.18.106
+dnsmasq: reply youtubei.googleapis.com is 142.250.186.106
+dnsmasq: reply youtubei.googleapis.com is 142.250.185.74
+dnsmasq: reply youtubei.googleapis.com is 142.250.186.42
+dnsmasq: reply youtubei.googleapis.com is 142.250.185.170
+dnsmasq: reply youtubei.googleapis.com is 142.250.184.234
+dnsmasq: reply youtubei.googleapis.com is 172.217.18.10
+dnsmasq: reply youtubei.googleapis.com is 216.58.206.74
+dnsmasq: reply wangyiyun-js.oss-cn-shanghai.aliyuncs.com is <CNAME>
+dnsmasq: reply sc-2ul6.cn-shanghai.oss-adns.aliyuncs.com is <CNAME>
+dnsmasq: reply sc-2ul6.cn-shanghai.oss-adns.aliyuncs.com.gds.alibabadns.com is 47.101.26.11
+dnsmasq: query[A] firebaselogging.googleapis.com from 192.168.1.24
+dnsmasq: forwarded firebaselogging.googleapis.com to 8.8.8.8
+dnsmasq: reply firebaselogging.googleapis.com is 216.58.206.42
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.186.170
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.185.74
+dnsmasq: reply firebaselogging.googleapis.com is 216.58.206.74
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.186.74
+dnsmasq: reply firebaselogging.googleapis.com is 216.58.212.138
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.184.202
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.184.234
+dnsmasq: reply firebaselogging.googleapis.com is 216.58.212.170
+dnsmasq: reply firebaselogging.googleapis.com is 172.217.18.10
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.185.234
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.186.106
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.181.234
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.186.138
+dnsmasq: reply firebaselogging.googleapis.com is 172.217.16.202
+dnsmasq: reply firebaselogging.googleapis.com is 142.250.186.42
+192.168.1.24.34384 > 192.168.1.1.53:  3700+ A? graph.facebook.com
+192.168.1.24.59060 > 192.168.1.1.53:  13150+ A? youtubei.googleapis.com
+192.168.1.24.52106 > 192.168.1.1.53:  40603+ A? wangyiyun-js.oss-cn-shanghai.aliyuncs.com
+192.168.1.24.38096 > 192.168.1.1.53:  59852+ A? firebaselogging.googleapis.com
+dnsmasq: query[A] youtubei.googleapis.com from 192.168.1.24
+dnsmasq: cached youtubei.googleapis.com is 216.58.212.138
+dnsmasq: cached youtubei.googleapis.com is 142.250.185.106
+dnsmasq: cached youtubei.googleapis.com is 142.250.186.138
+dnsmasq: cached youtubei.googleapis.com is 142.250.184.202
+dnsmasq: cached youtubei.googleapis.com is 142.250.185.202
+dnsmasq: cached youtubei.googleapis.com is 142.250.186.74
+dnsmasq: cached youtubei.googleapis.com is 142.250.185.138
+dnsmasq: cached youtubei.googleapis.com is 142.250.186.170
+dnsmasq: cached youtubei.googleapis.com is 172.217.18.106
+dnsmasq: cached youtubei.googleapis.com is 142.250.186.106
+dnsmasq: cached youtubei.googleapis.com is 142.250.185.74
+dnsmasq: cached youtubei.googleapis.com is 142.250.186.42
+dnsmasq: cached youtubei.googleapis.com is 142.250.185.170
+dnsmasq: cached youtubei.googleapis.com is 142.250.184.234
+dnsmasq: cached youtubei.googleapis.com is 172.217.18.10
+dnsmasq: cached youtubei.googleapis.com is 216.58.206.74
+192.168.1.24.43596 > 192.168.1.1.53:  34133+ A? youtubei.googleapis.com
+dnsmasq: query[A] api.map.baidu.com from 192.168.1.24
+dnsmasq: forwarded api.map.baidu.com to 8.8.8.8
+192.168.1.24.3500 > 192.168.1.1.53:  18976+ A? api.map.baidu.com
+dnsmasq: reply api.map.baidu.com is <CNAME>
+dnsmasq: reply api.map.n.shifen.com is 180.76.11.161
+dnsmasq: reply api.map.n.shifen.com is 180.76.11.208
+dnsmasq: reply api.map.n.shifen.com is 180.76.11.230
+dnsmasq: query[A] i.ytimg.com from 192.168.1.24
+dnsmasq: forwarded i.ytimg.com to 8.8.8.8
+192.168.1.24.39423 > 192.168.1.1.53:  7447+ A? i.ytimg.com
+dnsmasq: reply i.ytimg.com is 172.217.23.118
+dnsmasq: reply i.ytimg.com is 142.250.184.214
+dnsmasq: reply i.ytimg.com is 142.250.185.150
+dnsmasq: reply i.ytimg.com is 216.58.206.86
+dnsmasq: reply i.ytimg.com is 142.250.185.118
+dnsmasq: reply i.ytimg.com is 142.250.185.246
+dnsmasq: reply i.ytimg.com is 142.250.185.182
+dnsmasq: reply i.ytimg.com is 142.250.186.118
+dnsmasq: reply i.ytimg.com is 142.250.184.246
+dnsmasq: reply i.ytimg.com is 142.250.185.214
+dnsmasq: reply i.ytimg.com is 172.217.18.22
+dnsmasq: reply i.ytimg.com is 142.250.186.182
+dnsmasq: reply i.ytimg.com is 142.250.186.150
+dnsmasq: reply i.ytimg.com is 142.250.186.86
+dnsmasq: reply i.ytimg.com is 172.217.18.118
+dnsmasq: reply i.ytimg.com is 142.250.185.86
+dnsmasq: query[A] fitcloud.hetangsmart.com from 192.168.1.24
+dnsmasq: forwarded fitcloud.hetangsmart.com to 8.8.8.8
+dnsmasq: reply fitcloud.hetangsmart.com is <CNAME>
+dnsmasq: reply ft-cf.fitclp.com is 104.26.13.21
+dnsmasq: reply ft-cf.fitclp.com is 172.67.68.132
+dnsmasq: reply ft-cf.fitclp.com is 104.26.12.21
+dnsmasq: query[A] i.ytimg.com from 192.168.1.24
+dnsmasq: cached i.ytimg.com is 172.217.23.118
+dnsmasq: cached i.ytimg.com is 142.250.184.214
+dnsmasq: cached i.ytimg.com is 142.250.185.150
+dnsmasq: cached i.ytimg.com is 216.58.206.86
+dnsmasq: cached i.ytimg.com is 142.250.185.118
+dnsmasq: cached i.ytimg.com is 142.250.185.246
+dnsmasq: cached i.ytimg.com is 142.250.185.182
+dnsmasq: cached i.ytimg.com is 142.250.186.118
+dnsmasq: cached i.ytimg.com is 142.250.184.246
+dnsmasq: cached i.ytimg.com is 142.250.185.214
+dnsmasq: cached i.ytimg.com is 172.217.18.22
+dnsmasq: cached i.ytimg.com is 142.250.186.182
+dnsmasq: cached i.ytimg.com is 142.250.186.150
+dnsmasq: cached i.ytimg.com is 142.250.186.86
+dnsmasq: cached i.ytimg.com is 172.217.18.118
+dnsmasq: cached i.ytimg.com is 142.250.185.86
+192.168.1.24.58889 > 192.168.1.1.53:  28809+ A? fitcloud.hetangsmart.com
+192.168.1.24.50888 > 192.168.1.1.53:  41024+ A? i.ytimg.com
+dnsmasq: query[A] api.hetangsmart.com from 192.168.1.24
+dnsmasq: forwarded api.hetangsmart.com to 8.8.8.8
+dnsmasq: reply api.hetangsmart.com is <CNAME>
+dnsmasq: reply weather-cf.ssmartlink.com is 188.114.97.7
+dnsmasq: reply weather-cf.ssmartlink.com is 188.114.96.7
+192.168.1.24.33420 > 192.168.1.1.53:  37403+ A? api.hetangsmart.com
+dnsmasq: query[A] www.google.com from 192.168.1.24
+dnsmasq: cached www.google.com is 142.250.181.228
+192.168.1.24.53635 > 192.168.1.1.53:  19037+ A? www.google.com
+dnsmasq: query[A] gateway.instagram.com from 192.168.1.24
+dnsmasq: forwarded gateway.instagram.com to 8.8.8.8
+dnsmasq: forwarded gateway.instagram.com to 8.8.8.8
+dnsmasq: reply gateway.instagram.com is <CNAME>
+dnsmasq: reply dgw.c10r.facebook.com is 157.240.223.1
+192.168.1.24.12607 > 192.168.1.1.53:  31761+ A? gateway.instagram.com
+dnsmasq: query[A] www.linkedin.com from 192.168.1.24
+dnsmasq: forwarded www.linkedin.com to 8.8.8.8
+dnsmasq: reply www.linkedin.com is <CNAME>
+dnsmasq: reply cf-afd.www.linkedin.com is <CNAME>
+dnsmasq: reply www.linkedin.com.cdn.cloudflare.net is 172.64.146.215
+dnsmasq: reply www.linkedin.com.cdn.cloudflare.net is 104.18.41.41
+192.168.1.24.56916 > 192.168.1.1.53:  36263+ A? www.linkedin.com
+wlan0: interface state ENABLED->DISABLED
+wlan0: AP-STA-DISCONNECTED 8e:35:97:a2:81:60
+wlan0: AP-DISABLED 
+wlan0: CTRL-EVENT-TERMINATING 
+nl80211: deinit ifname=wlan0 disabled_11b_rates=0
+dnsmasq: exiting on receipt of SIGTERM

@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import AirstrikeAPI from "./services/api"
 import "./App.css"
+import EvilTwinAttack from "./components/evil_twin/EvilTwinAttack.jsx"
 
 const App = () => {
   // API client
@@ -32,6 +33,7 @@ const App = () => {
   const [logs, setLogs] = useState({ deauth: [], icmp: [], mitm: [], handshake: [] })
   const [loading, setLoading] = useState({ scan: false, discover: false, mitmDiscover: false })
   const [errors, setErrors] = useState({})
+  const [showEvilTwin, setShowEvilTwin] = useState(false)
 
   // Form states
   const [scanConfig, setScanConfig] = useState({
@@ -524,6 +526,20 @@ const App = () => {
   }
 
   // ==================== RENDER ====================
+
+  if (showEvilTwin) {
+    return (
+      <div style={{ padding: 24 }}>
+        <button
+          onClick={() => setShowEvilTwin(false)}
+          style={{ marginBottom: 16, padding: '8px 16px', background: '#374151', color: 'white', borderRadius: 6, border: 'none', fontWeight: 600 }}
+        >
+          ← Back to Dashboard
+        </button>
+        <EvilTwinAttack />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -1278,6 +1294,25 @@ const App = () => {
             </div>
           </div>
         </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '32px 0' }}>
+        <button
+          onClick={() => setShowEvilTwin(true)}
+          style={{
+            padding: '16px 32px',
+            background: '#ef4444',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 20,
+            fontWeight: 700,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+          }}
+        >
+          Evil Twin Attack
+        </button>
       </div>
     </div>
   )
