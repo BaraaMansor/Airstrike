@@ -90,6 +90,10 @@ const App = () => {
   const [networkActionResult, setNetworkActionResult] = useState(null);
   const [networkActionLoading, setNetworkActionLoading] = useState(false);
 
+  // Wireless Interface Reset State
+  const [wirelessResetResult, setWirelessResetResult] = useState(null);
+  const [wirelessResetLoading, setWirelessResetLoading] = useState(false);
+
   // Probe Sniffer state
   const [probeSnifferConfig, setProbeSnifferConfig] = useState({
     interface: scanConfig.interface,
@@ -101,6 +105,33 @@ const App = () => {
   // Probe Sniffer summary for top bar
   const [probeSnifferSummary, setProbeSnifferSummary] = useState("");
 
+  // Add a local state to track if the Probe Sniffer section is visible
+  const [probeSnifferSectionActive, setProbeSnifferSectionActive] = useState(false);
+
+  // Add function to fetch probe sniffer stats
+  const fetchProbeSnifferStats = async () => {
+    try {
+      const res = await fetch('/api/probe-sniffer/status');
+      const data = await res.json();
+      if (data && data.running && data.stats) {
+        setProbeSnifferSummary(
+          `• ${data.stats.unique_clients || 0} clients, ${data.stats.unique_ssids || 0} SSIDs, ${data.stats.wildcard_probe_count || 0} wildcards`
+        );
+      } else {
+        setProbeSnifferSummary("");
+      }
+    } catch {
+      setProbeSnifferSummary("");
+    }
+  };
+
+  // Add effect to fetch status when section becomes active
+  useEffect(() => {
+    if (probeSnifferSectionActive) {
+      fetchProbeSnifferStats();
+    }
+  }, [probeSnifferSectionActive]);
+
   const handleNetworkAction = () => {
     setNetworkActionLoading(true);
     setNetworkActionResult(null);
@@ -111,6 +142,18 @@ const App = () => {
       .then(data => setNetworkActionResult(data))
       .catch(() => setNetworkActionResult({ actions: [], errors: ["Request failed"] }))
       .finally(() => setNetworkActionLoading(false));
+  };
+
+  const handleWirelessReset = () => {
+    setWirelessResetLoading(true);
+    setWirelessResetResult(null);
+    fetch(`/api/evil-twin/reset-wireless-interface`, {
+      method: "POST"
+    })
+      .then(res => res.json())
+      .then(data => setWirelessResetResult(data))
+      .catch(() => setWirelessResetResult({ actions: [], errors: ["Request failed"] }))
+      .finally(() => setWirelessResetLoading(false));
   };
 
   // WiFi Blocker state
@@ -234,28 +277,6 @@ const App = () => {
       })
     }
   }, [])
-
-  useEffect(() => {
-    let interval;
-    const fetchProbeSnifferStats = async () => {
-      try {
-        const res = await fetch('/api/probe-sniffer/status');
-        const data = await res.json();
-        if (data && data.running && data.stats) {
-          setProbeSnifferSummary(
-            `• ${data.stats.unique_clients || 0} clients, ${data.stats.unique_ssids || 0} SSIDs, ${data.stats.wildcard_probe_count || 0} wildcards`
-          );
-        } else {
-          setProbeSnifferSummary("");
-        }
-      } catch {
-        setProbeSnifferSummary("");
-      }
-    };
-    fetchProbeSnifferStats();
-    interval = setInterval(fetchProbeSnifferStats, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   // ==================== UTILITY FUNCTIONS ====================
 
@@ -741,9 +762,6 @@ const App = () => {
                 <span>{apiStatus.status}</span>
                 <span>•</span>
                 <span>{apiStatus.attacks} active</span>
-                {probeSnifferSummary && (
-                  <span className="ml-2 text-xs text-purple-300">{probeSnifferSummary}</span>
-                )}
               </div>
               <button onClick={checkAPIHealth} className="p-2 text-gray-400 hover:text-white transition-colors">
                 <RefreshCw className="h-4 w-4" />
@@ -898,6 +916,25 @@ const App = () => {
       )}
       {networkActionResult.errors && networkActionResult.errors.length > 0 && (
         <div className="text-red-600">{networkActionResult.errors.join('; ')}</div>
+      )}
+    </div>
+  )}
+  
+  {/* Wireless Interface Reset Button */}
+  <button
+    onClick={handleWirelessReset}
+    disabled={wirelessResetLoading}
+    className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold text-base shadow-md transition-all duration-150 mt-4"
+  >
+    {wirelessResetLoading ? "Processing..." : "Reset Wireless Interface to Managed Mode"}
+  </button>
+  {wirelessResetResult && (
+    <div className="mt-3 text-sm text-center w-full">
+      {wirelessResetResult.actions && wirelessResetResult.actions.length > 0 && (
+        <div className="text-green-500">{wirelessResetResult.actions.join('; ')}</div>
+      )}
+      {wirelessResetResult.errors && wirelessResetResult.errors.length > 0 && (
+        <div className="text-red-600">{wirelessResetResult.errors.join('; ')}</div>
       )}
     </div>
   )}
@@ -1110,12 +1147,24 @@ const App = () => {
               </form>
             </div>
             {/* Probe Request Sniffer Attack */}
-            <div className="bg-gray-800 rounded-lg p-6">
+            <div className="bg-gray-800 rounded-lg p-6" onMouseEnter={() => setProbeSnifferSectionActive(true)}>
               <h2 className="text-lg font-semibold mb-4 flex items-center">
                 <Eye className="h-5 w-5 mr-2 text-purple-400" />
                 Probe Request Sniffer
               </h2>
               <div className="space-y-4">
+                {/* Show summary and refresh button only when section is active */}
+                {probeSnifferSectionActive && (
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-purple-300">{probeSnifferSummary}</span>
+                    <button
+                      onClick={fetchProbeSnifferStats}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-purple-700"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Interface</label>
                   <input

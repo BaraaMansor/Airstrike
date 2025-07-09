@@ -273,4 +273,44 @@ def kill_adapter_processes_and_restart_network_manager():
             result["errors"].append(f"Failed to restart NetworkManager: {e}")
     except Exception as e:
         result["errors"].append(str(e))
+    return result
+
+def reset_wireless_interface_to_managed():
+    """
+    Reset wireless interface to managed mode: ifconfig wlan0 down; iwconfig wlan0 mode managed; ifconfig wlan0 up
+    Returns a dict with actions and errors.
+    """
+    result = {"actions": [], "errors": []}
+    try:
+        # Auto-detect interface
+        interface = None
+        with open("/proc/net/dev") as f:
+            for line in f.readlines()[2:]:
+                iface = line.split(":")[0].strip()
+                if iface.startswith("wlan") or iface.startswith("wl"):  # covers wlan0, wlan1, wlp2s0, etc.
+                    interface = iface
+                    break
+        if not interface:
+            result["errors"].append("No wireless interface found.")
+            return result
+        result["actions"].append(f"Using interface: {interface}")
+        
+        # Execute the reset commands
+        commands = [
+            f"sudo ifconfig {interface} down",
+            f"sudo iwconfig {interface} mode managed", 
+            f"sudo ifconfig {interface} up"
+        ]
+        
+        for cmd in commands:
+            try:
+                subprocess.run(cmd.split(), capture_output=True, check=True)
+                result["actions"].append(f"Executed: {cmd}")
+            except subprocess.CalledProcessError as e:
+                result["errors"].append(f"Failed to execute '{cmd}': {e}")
+            except Exception as e:
+                result["errors"].append(f"Error executing '{cmd}': {e}")
+                
+    except Exception as e:
+        result["errors"].append(str(e))
     return result 

@@ -76,4 +76,12 @@ async def kill_adapter_and_restart_network():
     Kill all processes using the connected wireless adapter and restart NetworkManager.
     """
     result = evil_twin_attack.kill_adapter_processes_and_restart_network_manager()
+    return result
+
+@router.post("/reset-wireless-interface")
+async def reset_wireless_interface():
+    """
+    Reset wireless interface to managed mode: ifconfig wlan0 down; iwconfig wlan0 mode managed; ifconfig wlan0 up
+    """
+    result = evil_twin_attack.reset_wireless_interface_to_managed()
     return result 
