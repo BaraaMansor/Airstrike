@@ -80,6 +80,7 @@ const App = () => {
     icmp: { running: false, id: null },
     mitm: { running: false, id: null },
     handshake: { running: false, id: null },
+    probeSniffer: { running: false, id: null },
   })
 
   // Polling intervals
@@ -88,6 +89,17 @@ const App = () => {
   // Network Manager Button State
   const [networkActionResult, setNetworkActionResult] = useState(null);
   const [networkActionLoading, setNetworkActionLoading] = useState(false);
+
+  // Probe Sniffer state
+  const [probeSnifferConfig, setProbeSnifferConfig] = useState({
+    interface: scanConfig.interface,
+  });
+  const [probeSnifferLoading, setProbeSnifferLoading] = useState(false);
+  const [probeSnifferResult, setProbeSnifferResult] = useState(null);
+  const [probeSnifferLogs, setProbeSnifferLogs] = useState([]);
+
+  // Probe Sniffer summary for top bar
+  const [probeSnifferSummary, setProbeSnifferSummary] = useState("");
 
   const handleNetworkAction = () => {
     setNetworkActionLoading(true);
@@ -138,6 +150,78 @@ const App = () => {
     setWiFiBlockerResult(result.data);
   };
 
+  // Probe Sniffer handlers
+  const startProbeSniffer = async () => {
+    setProbeSnifferLoading(true);
+    setProbeSnifferResult(null);
+    setErrors((prev) => { const newErrors = { ...prev }; delete newErrors.probeSniffer; return newErrors; });
+    
+    try {
+      const response = await fetch('/api/probe-sniffer/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interface: probeSnifferConfig.interface })
+      });
+      
+      const result = await response.json();
+      setProbeSnifferLoading(false);
+      
+      if (result.running) {
+        setAttackStates(prev => ({ ...prev, probeSniffer: { running: true, id: result.pid } }));
+        setProbeSnifferResult({ status: "success", message: result.message });
+        startPollingProbeSniffer();
+      } else {
+        setError("probeSniffer", result.error || "Failed to start probe sniffer");
+      }
+    } catch (error) {
+      setProbeSnifferLoading(false);
+      setError("probeSniffer", "Failed to start probe sniffer attack");
+    }
+  };
+
+  const stopProbeSniffer = async () => {
+    try {
+      const response = await fetch('/api/probe-sniffer/stop', {
+        method: 'POST'
+      });
+      
+      const result = await response.json();
+      
+      if (!result.running) {
+        setAttackStates(prev => ({ ...prev, probeSniffer: { running: false, id: null } }));
+        setProbeSnifferResult({ status: "success", message: result.message });
+        stopPollingProbeSniffer();
+      } else {
+        setError("probeSniffer", result.error || "Failed to stop probe sniffer");
+      }
+    } catch (error) {
+      setError("probeSniffer", "Failed to stop probe sniffer attack");
+    }
+  };
+
+  const startPollingProbeSniffer = () => {
+    if (pollingIntervals.current.probeSniffer) {
+      clearInterval(pollingIntervals.current.probeSniffer);
+    }
+    
+    pollingIntervals.current.probeSniffer = setInterval(async () => {
+      try {
+        const response = await fetch('/api/probe-sniffer/logs?lines=10');
+        const result = await response.json();
+        setProbeSnifferLogs(result.logs || []);
+      } catch (error) {
+        console.error('Failed to fetch probe sniffer logs:', error);
+      }
+    }, 2000);
+  };
+
+  const stopPollingProbeSniffer = () => {
+    if (pollingIntervals.current.probeSniffer) {
+      clearInterval(pollingIntervals.current.probeSniffer);
+      pollingIntervals.current.probeSniffer = null;
+    }
+  };
+
   // ==================== EFFECTS ====================
 
   useEffect(() => {
@@ -150,6 +234,28 @@ const App = () => {
       })
     }
   }, [])
+
+  useEffect(() => {
+    let interval;
+    const fetchProbeSnifferStats = async () => {
+      try {
+        const res = await fetch('/api/probe-sniffer/status');
+        const data = await res.json();
+        if (data && data.running && data.stats) {
+          setProbeSnifferSummary(
+            `• ${data.stats.unique_clients || 0} clients, ${data.stats.unique_ssids || 0} SSIDs, ${data.stats.wildcard_probe_count || 0} wildcards`
+          );
+        } else {
+          setProbeSnifferSummary("");
+        }
+      } catch {
+        setProbeSnifferSummary("");
+      }
+    };
+    fetchProbeSnifferStats();
+    interval = setInterval(fetchProbeSnifferStats, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ==================== UTILITY FUNCTIONS ====================
 
@@ -563,6 +669,9 @@ const App = () => {
       stopPolling(attackType)
     })
 
+    // Stop probe sniffer specifically
+    stopPollingProbeSniffer()
+
     // Stop all attacks on server
     const result = await api.current.stopAllAttacks()
     if (result.success) {
@@ -571,8 +680,10 @@ const App = () => {
         icmp: { running: false, id: null },
         mitm: { running: false, id: null },
         handshake: { running: false, id: null },
+        probeSniffer: { running: false, id: null },
       })
       setMitmTraffic([])
+      setProbeSnifferLogs([])
       addLog("deauth", "All attacks stopped")
       addLog("icmp", "All attacks stopped")
       addLog("mitm", "All attacks stopped")
@@ -630,6 +741,9 @@ const App = () => {
                 <span>{apiStatus.status}</span>
                 <span>•</span>
                 <span>{apiStatus.attacks} active</span>
+                {probeSnifferSummary && (
+                  <span className="ml-2 text-xs text-purple-300">{probeSnifferSummary}</span>
+                )}
               </div>
               <button onClick={checkAPIHealth} className="p-2 text-gray-400 hover:text-white transition-colors">
                 <RefreshCw className="h-4 w-4" />
@@ -669,6 +783,7 @@ const App = () => {
                       setScanConfig((prev) => ({ ...prev, interface: e.target.value }))
                       setMitmConfig((prev) => ({ ...prev, interface: e.target.value }))
                       setHandshakeConfig((prev) => ({ ...prev, interface: e.target.value }))
+                      setProbeSnifferConfig((prev) => ({ ...prev, interface: e.target.value }))
                     }}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., wlan0"
@@ -993,6 +1108,78 @@ const App = () => {
                   </div>
                 )}
               </form>
+            </div>
+            {/* Probe Request Sniffer Attack */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Eye className="h-5 w-5 mr-2 text-purple-400" />
+                Probe Request Sniffer
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Interface</label>
+                  <input
+                    type="text"
+                    value={probeSnifferConfig.interface}
+                    onChange={e => setProbeSnifferConfig(prev => ({ ...prev, interface: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., wlan0"
+                  />
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={startProbeSniffer}
+                    disabled={attackStates.probeSniffer.running || probeSnifferLoading}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {probeSnifferLoading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Starting...
+                      </>
+                    ) : attackStates.probeSniffer.running ? (
+                      <>
+                        <Square className="h-4 w-4 mr-2" />
+                        Attack Running
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Sniffer
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={stopProbeSniffer}
+                    disabled={!attackStates.probeSniffer.running}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
+                </div>
+                {probeSnifferResult && (
+                  <div className="mt-2 text-sm">
+                    {probeSnifferResult.status === "success" && (
+                      <div className="text-green-500">{probeSnifferResult.message}</div>
+                    )}
+                    {probeSnifferResult.status === "error" && (
+                      <div className="text-red-600">{probeSnifferResult.message}</div>
+                    )}
+                  </div>
+                )}
+                {/* Probe Sniffer Logs */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">Live Probe Detection:</h3>
+                  <div className="bg-gray-900 rounded-md p-3 h-32 overflow-y-auto text-xs font-mono">
+                    {probeSnifferLogs.map((log, index) => (
+                      <div key={index} className="text-gray-300 mb-1">
+                        {log}
+                      </div>
+                    ))}
+                    {probeSnifferLogs.length === 0 && <div className="text-gray-500">No probes detected yet...</div>}
+                  </div>
+                </div>
+              </div>
             </div>
             {/* Deauth Attack */}
             <div className="bg-gray-800 rounded-lg p-6">
@@ -1454,6 +1641,14 @@ const App = () => {
                   >
                     {attackStates.deauth.running ? "RUNNING" : "STOPPED"}
                   </span>
+                  {attackStates.deauth.running && (
+                    <button
+                      onClick={stopDeauthAttack}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-300">ICMP Flood</span>
@@ -1464,6 +1659,14 @@ const App = () => {
                   >
                     {attackStates.icmp.running ? "RUNNING" : "STOPPED"}
                   </span>
+                  {attackStates.icmp.running && (
+                    <button
+                      onClick={stopICMPAttack}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-300">MITM Attack</span>
@@ -1474,6 +1677,14 @@ const App = () => {
                   >
                     {attackStates.mitm.running ? "RUNNING" : "STOPPED"}
                   </span>
+                  {attackStates.mitm.running && (
+                    <button
+                      onClick={stopMITMAttack}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-300">Handshake Capture</span>
@@ -1484,6 +1695,33 @@ const App = () => {
                   >
                     {attackStates.handshake.running ? "RUNNING" : "STOPPED"}
                   </span>
+                  {attackStates.handshake.running && (
+                    <button
+                      onClick={stopHandshakeCapture}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+                {/* Probe Request Sniffer Attack Status */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Probe Request Sniffer</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.probeSniffer.running ? "bg-purple-900 text-purple-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.probeSniffer.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                  {attackStates.probeSniffer.running && (
+                    <button
+                      onClick={stopProbeSniffer}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-purple-700"
+                    >
+                      Stop
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

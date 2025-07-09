@@ -50,6 +50,10 @@ app.include_router(evil_twin_router)
 from api.wifi_blocker import router as wifi_blocker_router
 app.include_router(wifi_blocker_router)
 
+# Register Probe Sniffer API router
+from api.probe_sniffer import router as probe_sniffer_router
+app.include_router(probe_sniffer_router)
+
 # Store active attacks
 active_attacks = {}
 

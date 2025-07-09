@@ -381,7 +381,7 @@ class AirstrikeAPI {
 
   async startWiFiBlocker(networkInterface, targetIPs) {
     try {
-      const response = await fetch(`${this.baseURL}/attacks/wifi-blocker`, {
+      const response = await fetch(`${this.baseURL}/api/wifi-blocker/start`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -390,14 +390,81 @@ class AirstrikeAPI {
           interface: networkInterface,
           targets: targetIPs,
         }),
-      });
-      const data = await response.json();
+      })
+
+      const data = await response.json()
       return {
         success: response.ok,
         data: data,
-      };
+      }
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
+    }
+  }
+
+  // ==================== PROBE SNIFFER ENDPOINTS ====================
+
+  async startProbeSniffer(networkInterface) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/probe-sniffer/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interface: networkInterface,
+        }),
+      })
+
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: data,
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async stopProbeSniffer() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/probe-sniffer/stop`, {
+        method: "POST",
+      })
+
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: data,
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async getProbeSnifferStatus() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/probe-sniffer/status`)
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: data,
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
+  async getProbeSnifferLogs(lines = 50) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/probe-sniffer/logs?lines=${lines}`)
+      const data = await response.json()
+      return {
+        success: response.ok,
+        data: data,
+      }
+    } catch (error) {
+      return { success: false, error: error.message }
     }
   }
 }
