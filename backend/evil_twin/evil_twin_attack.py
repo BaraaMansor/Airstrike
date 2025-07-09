@@ -35,10 +35,6 @@ def check_interface_support(interface: str) -> bool:
     except:
         return False
 
-def stop_conflicting_services():
-    """Stop NetworkManager and wpa_supplicant to prevent interface conflicts (disabled by user request)"""
-    pass
-
 def set_regulatory_domain():
     """Set regulatory domain to US for better channel support"""
     try:
@@ -117,9 +113,6 @@ def start_evil_twin(ssid: str, interface: str, channel: str) -> Dict:
     # Check interface support
     if not check_interface_support(interface):
         return {"error": f"Interface {interface} does not support AP mode. Try wlan0 or a USB WiFi adapter."}
-    
-    # Stop conflicting services
-    stop_conflicting_services()
     
     # Set regulatory domain
     set_regulatory_domain()
