@@ -267,3 +267,30 @@ def _get_handshake_validation_status(eapol_messages):
         return f"partial_handshake_{len(present_messages)}_of_4_missing_{missing_messages}"
     else:
         return "no_valid_eapol_messages" 
+
+from fastapi import APIRouter, HTTPException, Request
+from typing import List
+import sys
+sys.path.append("../attacks")
+from backend.attacks.wifi_blocker import WiFiTrafficController
+
+@router.post("/wifi-blocker")
+async def wifi_blocker_attack(request: Request):
+    data = await request.json()
+    interface = data.get("interface")
+    targets = data.get("targets")
+    if not interface or not isinstance(interface, str):
+        raise HTTPException(status_code=400, detail="Interface is required and must be a string.")
+    if not targets or not isinstance(targets, list) or not all(isinstance(ip, str) for ip in targets):
+        raise HTTPException(status_code=400, detail="Targets must be a list of IP address strings.")
+    if len(targets) == 0:
+        raise HTTPException(status_code=400, detail="At least one target IP is required.")
+    try:
+        controller = WiFiTrafficController(interface)
+        # Run attack in a thread so API doesn't block
+        import threading
+        thread = threading.Thread(target=controller.start_attack, args=(targets,), daemon=True)
+        thread.start()
+        return {"status": "success", "message": f"WiFi Blocker attack started on {interface} for targets: {targets}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)} 

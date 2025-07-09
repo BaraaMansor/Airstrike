@@ -378,6 +378,28 @@ class AirstrikeAPI {
       return { success: false, error: error.message }
     }
   }
+
+  async startWiFiBlocker(networkInterface, targetIPs) {
+    try {
+      const response = await fetch(`${this.baseURL}/attacks/wifi-blocker`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interface: networkInterface,
+          targets: targetIPs,
+        }),
+      });
+      const data = await response.json();
+      return {
+        success: response.ok,
+        data: data,
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export default AirstrikeAPI

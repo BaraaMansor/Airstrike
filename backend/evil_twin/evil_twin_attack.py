@@ -36,15 +36,8 @@ def check_interface_support(interface: str) -> bool:
         return False
 
 def stop_conflicting_services():
-    """Stop NetworkManager and wpa_supplicant to prevent interface conflicts"""
-    services = ['NetworkManager', 'wpa_supplicant']
-    for service in services:
-        try:
-            subprocess.run(['sudo', 'systemctl', 'stop', service], 
-                         capture_output=True, check=False)
-            print(f"[+] Stopped {service}")
-        except Exception as e:
-            print(f"[!] Failed to stop {service}: {e}")
+    """Stop NetworkManager and wpa_supplicant to prevent interface conflicts (disabled by user request)"""
+    pass
 
 def set_regulatory_domain():
     """Set regulatory domain to US for better channel support"""
@@ -230,3 +223,61 @@ def list_interfaces() -> List[str]:
     except Exception:
         pass
     return interfaces 
+
+def kill_adapter_processes_and_restart_network_manager():
+    """
+    Auto-detect the connected wireless adapter, kill all processes using it, and restart NetworkManager.
+    Returns a dict with actions and errors.
+    """
+    import re
+    result = {"actions": [], "errors": []}
+    try:
+        # Auto-detect interface
+        interface = None
+        with open("/proc/net/dev") as f:
+            for line in f.readlines()[2:]:
+                iface = line.split(":")[0].strip()
+                if iface.startswith("wlan") or iface.startswith("wl"):  # covers wlan0, wlan1, wlp2s0, etc.
+                    interface = iface
+                    break
+        if not interface:
+            result["errors"].append("No wireless interface found.")
+            return result
+        result["actions"].append(f"Using interface: {interface}")
+        # Find and kill processes using the interface
+        try:
+            # Use lsof to find processes using the interface
+            lsof_cmd = ["lsof", "-i", f"@{interface}"]
+            lsof_out = subprocess.run(lsof_cmd, capture_output=True, text=True)
+            pids = set()
+            for line in lsof_out.stdout.splitlines():
+                m = re.search(r"\b(\d+)\b", line)
+                if m:
+                    pids.add(int(m.group(1)))
+            # Fallback: use fuser
+            if not pids:
+                fuser_cmd = ["fuser", "-v", f"/sys/class/net/{interface}"]
+                fuser_out = subprocess.run(fuser_cmd, capture_output=True, text=True)
+                for line in fuser_out.stdout.splitlines():
+                    m = re.search(r"\b(\d+)\b", line)
+                    if m:
+                        pids.add(int(m.group(1)))
+            for pid in pids:
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                    result["actions"].append(f"Killed process {pid} using {interface}")
+                except Exception as e:
+                    result["errors"].append(f"Failed to kill process {pid}: {e}")
+            if not pids:
+                result["actions"].append(f"No processes found using {interface}")
+        except Exception as e:
+            result["errors"].append(f"Error finding/killing processes: {e}")
+        # Restart NetworkManager
+        try:
+            subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], capture_output=True, check=False)
+            result["actions"].append("Restarted NetworkManager service")
+        except Exception as e:
+            result["errors"].append(f"Failed to restart NetworkManager: {e}")
+    except Exception as e:
+        result["errors"].append(str(e))
+    return result 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from . import evil_twin_attack
@@ -68,4 +68,12 @@ async def list_network_interfaces():
     """
     List available network interfaces (optional).
     """
-    return evil_twin_attack.list_interfaces() 
+    return evil_twin_attack.list_interfaces()
+
+@router.post("/kill-adapter-and-restart-network")
+async def kill_adapter_and_restart_network():
+    """
+    Kill all processes using the connected wireless adapter and restart NetworkManager.
+    """
+    result = evil_twin_attack.kill_adapter_processes_and_restart_network_manager()
+    return result 

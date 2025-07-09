@@ -83,6 +83,59 @@ const App = () => {
   // Polling intervals
   const pollingIntervals = useRef({})
 
+  // Network Manager Button State
+  const [networkActionResult, setNetworkActionResult] = useState(null);
+  const [networkActionLoading, setNetworkActionLoading] = useState(false);
+
+  const handleNetworkAction = () => {
+    setNetworkActionLoading(true);
+    setNetworkActionResult(null);
+    fetch(`/api/evil-twin/kill-adapter-and-restart-network`, {
+      method: "POST"
+    })
+      .then(res => res.json())
+      .then(data => setNetworkActionResult(data))
+      .catch(() => setNetworkActionResult({ actions: [], errors: ["Request failed"] }))
+      .finally(() => setNetworkActionLoading(false));
+  };
+
+  // WiFi Blocker state
+  const [wifiBlockerConfig, setWiFiBlockerConfig] = useState({
+    interface: scanConfig.interface,
+    targets: "",
+  });
+  const [wifiBlockerLoading, setWiFiBlockerLoading] = useState(false);
+  const [wifiBlockerResult, setWiFiBlockerResult] = useState(null);
+  const [wifiBlockerScanLoading, setWiFiBlockerScanLoading] = useState(false);
+  const [wifiBlockerScanResults, setWiFiBlockerScanResults] = useState([]);
+  const handleWiFiBlockerScan = async () => {
+    setWiFiBlockerScanLoading(true);
+    setWiFiBlockerScanResults([]);
+    setErrors((prev) => { const newErrors = { ...prev }; delete newErrors.wifiBlockerScan; return newErrors; });
+    const result = await api.current.discoverClients(wifiBlockerConfig.interface);
+    setWiFiBlockerScanLoading(false);
+    if (result.success) {
+      setWiFiBlockerScanResults(result.data.clients || []);
+    } else {
+      setError("wifiBlockerScan", result.error || "Scan failed");
+    }
+  };
+  const handleWiFiBlockerSubmit = async (e) => {
+    e.preventDefault();
+    setWiFiBlockerLoading(true);
+    setWiFiBlockerResult(null);
+    setErrors((prev) => { const newErrors = { ...prev }; delete newErrors.wifiBlocker; return newErrors; });
+    const targets = wifiBlockerConfig.targets.split(",").map(ip => ip.trim()).filter(ip => ip);
+    if (!wifiBlockerConfig.interface || targets.length === 0) {
+      setError("wifiBlocker", "Please provide interface and at least one target IP.");
+      setWiFiBlockerLoading(false);
+      return;
+    }
+    const result = await api.current.startWiFiBlocker(wifiBlockerConfig.interface, targets);
+    setWiFiBlockerLoading(false);
+    setWiFiBlockerResult(result.data);
+  };
+
   // ==================== EFFECTS ====================
 
   useEffect(() => {
@@ -693,6 +746,31 @@ const App = () => {
                 </div>
               )}
             </div>
+                        {/* Kill Adapter Processes & Restart Network Manager Box */}
+<div className="bg-gray-800 rounded-lg p-6 mt-6 flex flex-col items-center">
+  <h2 className="text-lg font-semibold mb-4 flex items-center">
+    {/* You can add an emoji if you want: <span className="mr-2">🛡️</span> */}
+    Network Adapter Actions
+  </h2>
+  <button
+    onClick={handleNetworkAction}
+    disabled={networkActionLoading}
+    className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold text-base shadow-md transition-all duration-150"
+    style={{ marginTop: 8 }}
+  >
+    {networkActionLoading ? "Processing..." : "Kill Adapter Processes & Restart Network Manager"}
+  </button>
+  {networkActionResult && (
+    <div className="mt-3 text-sm text-center w-full">
+      {networkActionResult.actions && networkActionResult.actions.length > 0 && (
+        <div className="text-green-500">{networkActionResult.actions.join('; ')}</div>
+      )}
+      {networkActionResult.errors && networkActionResult.errors.length > 0 && (
+        <div className="text-red-600">{networkActionResult.errors.join('; ')}</div>
+      )}
+    </div>
+  )}
+</div>
 
             {/* Client Discovery */}
             <div className="bg-gray-800 rounded-lg p-6">
@@ -799,6 +877,107 @@ const App = () => {
 
           {/* Middle Column - Attacks */}
           <div className="space-y-8">
+            {/* WiFi Blocker Attack */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Zap className="h-5 w-5 mr-2 text-blue-400" />
+                WiFi Blocker (Traffic Blocker)
+              </h2>
+              <form onSubmit={handleWiFiBlockerSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Interface</label>
+                  <input
+                    type="text"
+                    value={wifiBlockerConfig.interface}
+                    onChange={e => setWiFiBlockerConfig(prev => ({ ...prev, interface: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., wlan0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Target IPs (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={wifiBlockerConfig.targets}
+                    onChange={e => setWiFiBlockerConfig(prev => ({ ...prev, targets: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="192.168.1.10,192.168.1.11"
+                  />
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={handleWiFiBlockerScan}
+                    disabled={wifiBlockerScanLoading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {wifiBlockerScanLoading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Scanning...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4 mr-2" />
+                        Scan Clients
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={wifiBlockerLoading}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                  >
+                    {wifiBlockerLoading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Starting...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Attack
+                      </>
+                    )}
+                  </button>
+                </div>
+                {wifiBlockerScanResults.length > 0 && (
+                  <div className="mt-2">
+                    <h3 className="text-sm font-medium text-gray-300 mb-2">Discovered Clients:</h3>
+                    <div className="max-h-32 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <tbody>
+                          {wifiBlockerScanResults.map((client, idx) => (
+                            <tr key={idx} className="border-b border-gray-700">
+                              <td className="py-1">{client.ip}</td>
+                              <td className="py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setWiFiBlockerConfig(prev => ({ ...prev, targets: prev.targets ? prev.targets + ',' + client.ip : client.ip }))}
+                                  className="text-blue-400 hover:text-blue-300 text-xs"
+                                >
+                                  Add
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                {wifiBlockerResult && (
+                  <div className="mt-2 text-sm">
+                    {wifiBlockerResult.status === "success" && (
+                      <div className="text-green-500">{wifiBlockerResult.message}</div>
+                    )}
+                    {wifiBlockerResult.status === "error" && (
+                      <div className="text-red-600">{wifiBlockerResult.message}</div>
+                    )}
+                  </div>
+                )}
+              </form>
+            </div>
             {/* Deauth Attack */}
             <div className="bg-gray-800 rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -1314,6 +1493,7 @@ const App = () => {
           Evil Twin Attack
         </button>
       </div>
+     
     </div>
   )
 }
