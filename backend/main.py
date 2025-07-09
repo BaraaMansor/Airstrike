@@ -46,6 +46,10 @@ app.add_middleware(
 from evil_twin.api import router as evil_twin_router
 app.include_router(evil_twin_router)
 
+# Register Wi-Fi Blocker API router
+from api.wifi_blocker import router as wifi_blocker_router
+app.include_router(wifi_blocker_router)
+
 # Store active attacks
 active_attacks = {}
 

