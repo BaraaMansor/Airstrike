@@ -1041,65 +1041,113 @@ const App = () => {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Middle Column - Attacks */}
-          <div className="space-y-8">
-            {/* WiFi Blocker Attack */}
+            {/* Handshake Capture Attack */}
             <div className="bg-gray-800 rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <Zap className="h-5 w-5 mr-2 text-blue-400" />
-                WiFi Blocker (Traffic Blocker)
+                <Shield className="h-5 w-5 mr-2 text-orange-500" />
+                Handshake Capture Attack
               </h2>
-              <form onSubmit={handleWiFiBlockerSubmit} className="space-y-4">
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">SSID</label>
+                    <input
+                      type="text"
+                      value={handshakeConfig.ssid}
+                      onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, ssid: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="Network name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Channel</label>
+                    <input
+                      type="number"
+                      value={handshakeConfig.channel}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, channel: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="1"
+                      max="14"
+                    />
+                  </div>
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Interface</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">BSSID (MAC Address)</label>
                   <input
                     type="text"
-                    value={wifiBlockerConfig.interface}
-                    onChange={e => setWiFiBlockerConfig(prev => ({ ...prev, interface: e.target.value }))}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., wlan0"
+                    value={handshakeConfig.bssid}
+                    onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, bssid: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="aa:bb:cc:dd:ee:ff"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Target IPs (comma-separated)</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Wordlist Path</label>
                   <input
                     type="text"
-                    value={wifiBlockerConfig.targets}
-                    onChange={e => setWiFiBlockerConfig(prev => ({ ...prev, targets: e.target.value }))}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="192.168.1.10,192.168.1.11"
+                    value={handshakeConfig.wordlist}
+                    onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, wordlist: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="/usr/share/wordlists/rockyou.txt"
                   />
                 </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Timeout (s)</label>
+                    <input
+                      type="number"
+                      value={handshakeConfig.timeout}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, timeout: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="30"
+                      max="300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Deauth Count</label>
+                    <input
+                      type="number"
+                      value={handshakeConfig.deauthCount}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, deauthCount: Number.parseInt(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="1"
+                      max="20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Deauth Interval (s)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={handshakeConfig.deauthInterval}
+                      onChange={(e) =>
+                        setHandshakeConfig((prev) => ({ ...prev, deauthInterval: Number.parseFloat(e.target.value) }))
+                      }
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      min="0.5"
+                      max="10.0"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex space-x-2">
                   <button
-                    type="button"
-                    onClick={handleWiFiBlockerScan}
-                    disabled={wifiBlockerScanLoading}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                    onClick={startHandshakeCapture}
+                    disabled={attackStates.handshake.running}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
                   >
-                    {wifiBlockerScanLoading ? (
+                    {attackStates.handshake.running ? (
                       <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Scanning...
-                      </>
-                    ) : (
-                      <>
-                        <Users className="h-4 w-4 mr-2" />
-                        Scan Clients
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={wifiBlockerLoading}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
-                  >
-                    {wifiBlockerLoading ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Starting...
+                        <Square className="h-4 w-4 mr-2" />
+                        Attack Running
                       </>
                     ) : (
                       <>
@@ -1108,44 +1156,34 @@ const App = () => {
                       </>
                     )}
                   </button>
+                  <button
+                    onClick={stopHandshakeCapture}
+                    disabled={!attackStates.handshake.running}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
                 </div>
-                {wifiBlockerScanResults.length > 0 && (
-                  <div className="mt-2">
-                    <h3 className="text-sm font-medium text-gray-300 mb-2">Discovered Clients:</h3>
-                    <div className="max-h-32 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {wifiBlockerScanResults.map((client, idx) => (
-                            <tr key={idx} className="border-b border-gray-700">
-                              <td className="py-1">{client.ip}</td>
-                              <td className="py-1">
-                                <button
-                                  type="button"
-                                  onClick={() => setWiFiBlockerConfig(prev => ({ ...prev, targets: prev.targets ? prev.targets + ',' + client.ip : client.ip }))}
-                                  className="text-blue-400 hover:text-blue-300 text-xs"
-                                >
-                                  Add
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+              </div>
+
+              {/* Handshake Logs */}
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-2">Real-time Updates:</h3>
+                <div className="bg-gray-900 rounded-md p-3 h-24 overflow-y-auto text-xs font-mono">
+                  {logs.handshake.map((log, index) => (
+                    <div key={index} className="text-gray-300">
+                      {log}
                     </div>
-                  </div>
-                )}
-                {wifiBlockerResult && (
-                  <div className="mt-2 text-sm">
-                    {wifiBlockerResult.status === "success" && (
-                      <div className="text-green-500">{wifiBlockerResult.message}</div>
-                    )}
-                    {wifiBlockerResult.status === "error" && (
-                      <div className="text-red-600">{wifiBlockerResult.message}</div>
-                    )}
-                  </div>
-                )}
-              </form>
+                  ))}
+                  {logs.handshake.length === 0 && <div className="text-gray-500">No activity yet...</div>}
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* Middle Column - Attacks */}
+          <div className="space-y-8">
+            
             {/* Probe Request Sniffer Attack */}
             <div className="bg-gray-800 rounded-lg p-6" onMouseEnter={() => setProbeSnifferSectionActive(true)}>
               <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -1403,6 +1441,171 @@ const App = () => {
               </div>
             </div>
 
+
+          </div>
+
+          {/* Right Column - Traffic & Controls */}
+
+
+
+          <div className="space-y-8">
+
+
+            
+
+            {/* Attack Status Summary */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center">
+                <Activity className="h-5 w-5 mr-2" />
+                Attack Status
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Deauth Attack</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.deauth.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.deauth.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                  {attackStates.deauth.running && (
+                    <button
+                      onClick={stopDeauthAttack}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">ICMP Flood</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.icmp.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.icmp.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                  {attackStates.icmp.running && (
+                    <button
+                      onClick={stopICMPAttack}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">MITM Attack</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.mitm.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.mitm.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                  {attackStates.mitm.running && (
+                    <button
+                      onClick={stopMITMAttack}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Handshake Capture</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.handshake.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.handshake.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                  {attackStates.handshake.running && (
+                    <button
+                      onClick={stopHandshakeCapture}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+                {/* Probe Request Sniffer Attack Status */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Probe Request Sniffer</span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      attackStates.probeSniffer.running ? "bg-purple-900 text-purple-300" : "bg-gray-700 text-gray-400"
+                    }`}
+                  >
+                    {attackStates.probeSniffer.running ? "RUNNING" : "STOPPED"}
+                  </span>
+                  {attackStates.probeSniffer.running && (
+                    <button
+                      onClick={stopProbeSniffer}
+                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-purple-700"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+{/* Emergency Stop */}
+<div className="bg-red-900 border border-red-700 rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center text-red-300">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Emergency Controls
+              </h2>
+              <button
+                onClick={stopAllAttacks}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-md transition-colors flex items-center justify-center"
+              >
+                <Square className="h-4 w-4 mr-2" />
+                STOP ALL ATTACKS
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection:"column", gap:"1rem", justifyContent: 'center', margin: '32px 0' }}>
+        <button
+          onClick={() => setShowEvilTwin(true)}
+          style={{
+            padding: '16px 32px',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 20,
+            fontWeight: 700,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            transition: 'background 0.2s'
+          }}
+        >
+          Evil Twin Attack
+        </button>
+        <button
+          onClick={() => setShowWiFiBlocker(true)}
+          style={{
+            padding: '16px 32px',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 20,
+            fontWeight: 700,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+          }}
+        >
+          Wi-Fi Blocker Attack
+        </button>
+      </div>
+
             {/* MITM Attack */}
             <div className="bg-gray-800 rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -1472,147 +1675,6 @@ const App = () => {
               </div>
             </div>
 
-            {/* Handshake Capture Attack */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <Shield className="h-5 w-5 mr-2 text-orange-500" />
-                Handshake Capture Attack
-              </h2>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">SSID</label>
-                    <input
-                      type="text"
-                      value={handshakeConfig.ssid}
-                      onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, ssid: e.target.value }))}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      placeholder="Network name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Channel</label>
-                    <input
-                      type="number"
-                      value={handshakeConfig.channel}
-                      onChange={(e) =>
-                        setHandshakeConfig((prev) => ({ ...prev, channel: Number.parseInt(e.target.value) }))
-                      }
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      min="1"
-                      max="14"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">BSSID (MAC Address)</label>
-                  <input
-                    type="text"
-                    value={handshakeConfig.bssid}
-                    onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, bssid: e.target.value }))}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="aa:bb:cc:dd:ee:ff"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Wordlist Path</label>
-                  <input
-                    type="text"
-                    value={handshakeConfig.wordlist}
-                    onChange={(e) => setHandshakeConfig((prev) => ({ ...prev, wordlist: e.target.value }))}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="/usr/share/wordlists/rockyou.txt"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Timeout (s)</label>
-                    <input
-                      type="number"
-                      value={handshakeConfig.timeout}
-                      onChange={(e) =>
-                        setHandshakeConfig((prev) => ({ ...prev, timeout: Number.parseInt(e.target.value) }))
-                      }
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      min="30"
-                      max="300"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Deauth Count</label>
-                    <input
-                      type="number"
-                      value={handshakeConfig.deauthCount}
-                      onChange={(e) =>
-                        setHandshakeConfig((prev) => ({ ...prev, deauthCount: Number.parseInt(e.target.value) }))
-                      }
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      min="1"
-                      max="20"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Deauth Interval (s)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={handshakeConfig.deauthInterval}
-                      onChange={(e) =>
-                        setHandshakeConfig((prev) => ({ ...prev, deauthInterval: Number.parseFloat(e.target.value) }))
-                      }
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      min="0.5"
-                      max="10.0"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex space-x-2">
-                  <button
-                    onClick={startHandshakeCapture}
-                    disabled={attackStates.handshake.running}
-                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
-                  >
-                    {attackStates.handshake.running ? (
-                      <>
-                        <Square className="h-4 w-4 mr-2" />
-                        Attack Running
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Attack
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={stopHandshakeCapture}
-                    disabled={!attackStates.handshake.running}
-                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
-                  >
-                    <Square className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Handshake Logs */}
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Real-time Updates:</h3>
-                <div className="bg-gray-900 rounded-md p-3 h-24 overflow-y-auto text-xs font-mono">
-                  {logs.handshake.map((log, index) => (
-                    <div key={index} className="text-gray-300">
-                      {log}
-                    </div>
-                  ))}
-                  {logs.handshake.length === 0 && <div className="text-gray-500">No activity yet...</div>}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Traffic & Controls */}
-          <div className="space-y-8">
             {/* Captured Traffic */}
             <div className="bg-gray-800 rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -1659,160 +1721,8 @@ const App = () => {
               </div>
             </div>
 
-            {/* Emergency Stop */}
-            <div className="bg-red-900 border border-red-700 rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center text-red-300">
-                <AlertTriangle className="h-5 w-5 mr-2" />
-                Emergency Controls
-              </h2>
-              <button
-                onClick={stopAllAttacks}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-md transition-colors flex items-center justify-center"
-              >
-                <Square className="h-4 w-4 mr-2" />
-                STOP ALL ATTACKS
-              </button>
-            </div>
-
-            {/* Attack Status Summary */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <Activity className="h-5 w-5 mr-2" />
-                Attack Status
-              </h2>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Deauth Attack</span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded ${
-                      attackStates.deauth.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
-                    }`}
-                  >
-                    {attackStates.deauth.running ? "RUNNING" : "STOPPED"}
-                  </span>
-                  {attackStates.deauth.running && (
-                    <button
-                      onClick={stopDeauthAttack}
-                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
-                    >
-                      Stop
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">ICMP Flood</span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded ${
-                      attackStates.icmp.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
-                    }`}
-                  >
-                    {attackStates.icmp.running ? "RUNNING" : "STOPPED"}
-                  </span>
-                  {attackStates.icmp.running && (
-                    <button
-                      onClick={stopICMPAttack}
-                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
-                    >
-                      Stop
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">MITM Attack</span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded ${
-                      attackStates.mitm.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
-                    }`}
-                  >
-                    {attackStates.mitm.running ? "RUNNING" : "STOPPED"}
-                  </span>
-                  {attackStates.mitm.running && (
-                    <button
-                      onClick={stopMITMAttack}
-                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
-                    >
-                      Stop
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Handshake Capture</span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded ${
-                      attackStates.handshake.running ? "bg-red-900 text-red-300" : "bg-gray-700 text-gray-400"
-                    }`}
-                  >
-                    {attackStates.handshake.running ? "RUNNING" : "STOPPED"}
-                  </span>
-                  {attackStates.handshake.running && (
-                    <button
-                      onClick={stopHandshakeCapture}
-                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-red-700"
-                    >
-                      Stop
-                    </button>
-                  )}
-                </div>
-                {/* Probe Request Sniffer Attack Status */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-300">Probe Request Sniffer</span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded ${
-                      attackStates.probeSniffer.running ? "bg-purple-900 text-purple-300" : "bg-gray-700 text-gray-400"
-                    }`}
-                  >
-                    {attackStates.probeSniffer.running ? "RUNNING" : "STOPPED"}
-                  </span>
-                  {attackStates.probeSniffer.running && (
-                    <button
-                      onClick={stopProbeSniffer}
-                      className="ml-2 px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-purple-700"
-                    >
-                      Stop
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '32px 0' }}>
-        <button
-          onClick={() => setShowEvilTwin(true)}
-          style={{
-            padding: '16px 32px',
-            background: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            fontSize: 20,
-            fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-            marginRight: '16px'
-          }}
-        >
-          Evil Twin Attack
-        </button>
-        <button
-          onClick={() => setShowWiFiBlocker(true)}
-          style={{
-            padding: '16px 32px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            fontSize: 20,
-            fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-          }}
-        >
-          Wi-Fi Blocker Attack
-        </button>
       </div>
      
     </div>
